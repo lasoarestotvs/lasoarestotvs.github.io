@@ -1,1336 +1,833 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-  LayoutDashboard, 
-  ArrowDownToLine, 
-  Repeat, 
-  Users, 
-  ClipboardList, 
-  Truck,
-  Bell,
-  Search,
-  AlertTriangle,
-  TrendingUp,
-  TrendingDown,
-  PackageX,
-  Clock,
-  Map,
-  Package,
-  Box,
-  Layers,
-  CheckCircle,
-  AlertCircle,
-  CalendarX,
-  ShoppingCart,
-  Target,
-  ListChecks,
-  AlertOctagon,
-  Activity,
-  CalendarClock,
-  DollarSign,
-  ShieldCheck,
-  BarChart3,
-  DoorOpen,
-  LayoutGrid,
-  FileText
+    LayoutDashboard, Map, Package, Activity, AlertTriangle, 
+    Calendar, Users, Truck, CheckCircle, ShieldAlert,
+    Clock, AlertCircle, RefreshCw, Filter, X, Search, Bell, Menu,
+    Lock, Box, LockOpen, Warehouse, Store, Send, Sparkles, Bot, ChevronRight
 } from 'lucide-react';
 
-// --- Componentes de UI Reutilizáveis ---
-
-const KpiCard = ({ title, value, unit, icon: Icon, trend, trendValue, alert, theme = alert ? 'red' : 'blue' }) => {
-  const themes = {
-    blue: { border: 'border-blue-600', bg: 'bg-blue-50', text: 'text-blue-600' },
-    red: { border: 'border-red-500', bg: 'bg-red-50', text: 'text-red-600' },
-    green: { border: 'border-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-600' },
-    purple: { border: 'border-purple-500', bg: 'bg-purple-50', text: 'text-purple-600' },
-    amber: { border: 'border-amber-500', bg: 'bg-amber-50', text: 'text-amber-600' },
-    indigo: { border: 'border-indigo-500', bg: 'bg-indigo-50', text: 'text-indigo-600' },
-  };
-  const t = themes[theme] || themes.blue;
-
-  return (
-    <div className={`bg-white p-4 rounded-xl border-l-4 shadow-sm flex flex-col justify-between ${t.border}`}>
-      <div className="flex justify-between items-start mb-2">
-        <h3 className="text-slate-500 text-sm font-semibold">{title}</h3>
-        {Icon && (
-          <div className={`p-2 rounded-lg ${t.bg} ${t.text}`}>
-            <Icon size={20} />
-          </div>
-        )}
-      </div>
-      <div className="flex items-baseline gap-1">
-        <span className="text-3xl font-bold text-slate-800">{value}</span>
-        <span className="text-slate-500 text-sm">{unit}</span>
-      </div>
-      <div className={`text-xs mt-2 flex items-center font-medium ${trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-500' : 'text-slate-400'}`}>
-        {trend === 'up' && <TrendingUp size={14} className="mr-1" />}
-        {trend === 'down' && <TrendingDown size={14} className="mr-1" />}
-        {trendValue}
-      </div>
-    </div>
-  );
-};
-
-const VolumeProgressCard = ({ title, icon: Icon, agendados, conferidos, unitText, formatK = false, theme = 'blue', targetLabel = 'agendados' }) => {
-  const themes = {
-    blue: { border: 'border-blue-600', bg: 'bg-blue-50', text: 'text-blue-600', bar: 'bg-blue-500' },
-    green: { border: 'border-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-600', bar: 'bg-emerald-500' },
-    purple: { border: 'border-purple-500', bg: 'bg-purple-50', text: 'text-purple-600', bar: 'bg-purple-500' },
-    amber: { border: 'border-amber-500', bg: 'bg-amber-50', text: 'text-amber-600', bar: 'bg-amber-500' },
-    indigo: { border: 'border-indigo-500', bg: 'bg-indigo-50', text: 'text-indigo-600', bar: 'bg-indigo-500' },
-  };
-  const t = themes[theme] || themes.blue;
-
-  const valConferidos = formatK ? (conferidos / 1000).toFixed(1) + 'k' : conferidos;
-  const valAgendados = formatK ? (agendados / 1000).toFixed(1) + 'k' : agendados;
-  const percent = Math.round((conferidos / agendados) * 100);
-
-  return (
-    <div className={`bg-white p-4 rounded-xl border-l-4 shadow-sm flex flex-col justify-between ${t.border}`}>
-      <div className="flex justify-between items-start mb-2">
-        <h3 className="text-slate-500 text-sm font-semibold">{title}</h3>
-        {Icon && (
-          <div className={`p-2 rounded-lg ${t.bg} ${t.text}`}>
-            <Icon size={20} />
-          </div>
-        )}
-      </div>
-      <div className="flex items-baseline gap-1">
-        <span className="text-3xl font-bold text-slate-800">{valConferidos}</span>
-        <span className="text-slate-500 text-sm">{unitText}</span>
-      </div>
-      <div className="mt-2">
-        <div className="flex justify-between text-xs text-slate-500 mb-1">
-          <span>de {valAgendados} {targetLabel}</span>
-          <span className={`font-bold ${t.text}`}>{percent}%</span>
-        </div>
-        <div className="w-full bg-slate-100 rounded-full h-1.5">
-          <div 
-            className={`h-1.5 rounded-full ${t.bar}`} 
-            style={{ width: `${percent}%` }}
-          ></div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const ThermometerCard = ({ title, subtitle, value, unit, percentage, trend, trendValue, theme = 'blue' }) => {
-  const themes = {
-    blue: { bg: 'bg-blue-500', text: 'text-blue-600', bulb: 'bg-blue-600' },
-    purple: { bg: 'bg-purple-500', text: 'text-purple-600', bulb: 'bg-purple-600' },
-    green: { bg: 'bg-emerald-500', text: 'text-emerald-600', bulb: 'bg-emerald-600' },
-    red: { bg: 'bg-red-500', text: 'text-red-600', bulb: 'bg-red-600' },
-    amber: { bg: 'bg-amber-400', text: 'text-amber-500', bulb: 'bg-amber-500' },
-  };
-  const t = themes[theme] || themes.blue;
-
-  // Garante que a porcentagem visual não ultrapasse os limites
-  const safePct = Math.min(100, Math.max(0, percentage));
-
-  return (
-    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between relative overflow-hidden group">
-      {/* Fundo sutil decorativo */}
-      <div className={`absolute -right-4 -bottom-4 w-24 h-24 rounded-full opacity-[0.03] ${t.bg}`}></div>
-
-      <div className="flex flex-col justify-between h-full z-10 w-3/4">
-        <div>
-          <h3 className="text-slate-700 text-sm font-bold mb-0.5">{title}</h3>
-          <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">{subtitle}</p>
-        </div>
-        <div className="mt-4 mb-1">
-          <span className={`text-3xl font-black ${t.text}`}>{value}</span>
-          <span className="text-slate-500 text-sm ml-1 font-medium">{unit}</span>
-        </div>
-        <div className={`flex items-center gap-1.5 text-xs font-semibold ${trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-500' : 'text-slate-500'}`}>
-           {trend === 'up' ? <TrendingUp size={14} /> : trend === 'down' ? <TrendingDown size={14} /> : <span className={`inline-block w-2 h-2 rounded-full ${t.bg}`}></span>}
-           {trendValue || `${percentage}% ${theme === 'red' ? 'nível crítico' : 'da meta'}`}
-        </div>
-      </div>
-
-      {/* Visual do Termômetro */}
-      <div className="flex flex-col items-center justify-end h-28 w-12 pt-2 z-10">
-        {/* Tubo */}
-        <div className="w-3.5 flex-1 bg-slate-100 rounded-t-full relative shadow-inner border border-slate-200/50 flex flex-col justify-end overflow-hidden z-0">
-           {/* Marcas de escala (background) */}
-           <div className="absolute inset-0 flex flex-col justify-between py-1 opacity-20">
-             <div className="w-full h-[1px] bg-slate-800"></div>
-             <div className="w-full h-[1px] bg-slate-800"></div>
-             <div className="w-full h-[1px] bg-slate-800"></div>
-             <div className="w-full h-[1px] bg-slate-800"></div>
-           </div>
-           
-           {/* Líquido dentro do tubo */}
-           <div className={`w-full transition-all duration-1000 relative ${t.bg}`} style={{ height: `${safePct}%` }}>
-             {/* Efeito de brilho/vidro no líquido */}
-             <div className="absolute top-0 right-0 w-1/2 h-full bg-white/20"></div>
-           </div>
-           
-           {/* Linha da Meta (ex: 80% a 100%) */}
-           <div className="absolute top-[20%] left-0 w-full border-t-2 border-slate-800/30 z-10"></div>
-        </div>
-        {/* Bulbo */}
-        <div className={`w-8 h-8 rounded-full shadow-md -mt-2 z-10 border-2 border-white flex items-center justify-center relative ${t.bulb}`}>
-           {/* Brilho no bulbo */}
-           <div className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-white/40 blur-[1px]"></div>
-           <div className={`absolute -inset-1 rounded-full opacity-20 animate-pulse ${t.bg}`}></div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const SimpleBarChart = ({ data }) => {
-  const maxVal = Math.max(...data.map(d => Math.max(d.previsto, d.realizado)));
-  
-  return (
-    <div className="flex items-end h-48 gap-4 w-full mt-4">
-      {data.map((item, idx) => (
-        <div key={idx} className="flex flex-col items-center flex-1 group relative">
-          <div className="absolute -top-10 bg-slate-800 text-white text-xs p-2 rounded hidden group-hover:block z-10 whitespace-nowrap">
-            Previsto: {item.previsto} | Realizado: {item.realizado}
-          </div>
-          
-          <div className="flex items-end gap-1 w-full h-full justify-center">
-            <div 
-              className="bg-blue-200 w-1/3 rounded-t-sm transition-all duration-500" 
-              style={{ height: `${(item.previsto / maxVal) * 100}%` }}
-            ></div>
-            <div 
-              className="bg-blue-600 w-1/3 rounded-t-sm transition-all duration-500" 
-              style={{ height: `${(item.realizado / maxVal) * 100}%` }}
-            ></div>
-          </div>
-          <span className="text-xs text-slate-500 mt-2">{item.hora}</span>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-// --- Mock Data ---
-
-const chartData = [
-  { hora: '08:00', previsto: 120, realizado: 110 },
-  { hora: '09:00', previsto: 150, realizado: 145 },
-  { hora: '10:00', previsto: 200, realizado: 180 },
-  { hora: '11:00', previsto: 180, realizado: 190 },
-  { hora: '12:00', previsto: 90,  realizado: 85 },
-  { hora: '13:00', previsto: 160, realizado: 120 },
-  { hora: '14:00', previsto: 210, realizado: 150 },
+const doeAllVehicles = [
+    { placa: 'LPT9J76', tipo: 'Truck', capacidade: 14, carregamento: '25/02 13:45', viagemAberta: true, destino: 'Loja 10' },
+    { placa: 'ABC4D55', tipo: 'Carreta', capacidade: 28, carregamento: '25/02 14:10', viagemAberta: true, destino: 'Loja 22' },
+    { placa: 'STR9F01', tipo: 'Truck', capacidade: 14, carregamento: '25/02 14:25', viagemAberta: true, destino: 'Loja 02' },
+    { placa: 'LOG2B44', tipo: 'Carreta', capacidade: 28, carregamento: '25/02 14:30', viagemAberta: true, destino: 'Loja 05' },
+    { placa: 'BRA1E22', tipo: 'Truck', capacidade: 14, carregamento: '25/02 14:40', viagemAberta: true, destino: 'Loja 05' },
+    { placa: 'KLT8H12', tipo: 'Carreta', capacidade: 28, carregamento: '', viagemAberta: false, destino: '-' },
+    { placa: 'XYZ7W10', tipo: 'Truck', capacidade: 14, carregamento: '', viagemAberta: false, destino: '-' },
+    { placa: 'PFT4B56', tipo: 'Bitrem', capacidade: 36, carregamento: '', viagemAberta: false, destino: '-' },
+    { placa: 'MCE7G88', tipo: 'Carreta', capacidade: 28, carregamento: '25/02 14:55', viagemAberta: true, destino: 'Loja 12' },
+    { placa: 'RSL2C34', tipo: 'Truck', capacidade: 14, carregamento: '25/02 15:02', viagemAberta: true, destino: 'Loja 22' }
 ];
 
-const rupturasTable = [
-  { sku: '789101010', desc: 'LEITE UHT INTEGRAL 1L', setor: 'Mercearia', rua: 'Rua 12', pendente: 45, status: 'Crítico' },
-  { sku: '789202020', desc: 'SABONETE LIQ 200ML', setor: 'Higiene', rua: 'Rua 05', pendente: 12, status: 'Atenção' },
-  { sku: '789303030', desc: 'CERVEJA PILSEN LATA', setor: 'Bebidas', rua: 'Rua 22', pendente: 120, status: 'Crítico' },
-  { sku: '789404040', desc: 'ARROZ BRANCO 5KG', setor: 'Mercearia', rua: 'Rua 15', pendente: 8, status: 'Normal' },
+const doeEtapaData = {
+    'transito_cd': { title: 'Em Trânsito (CD > Loja)', vehicles: [{ placa: 'LPT9J76', origem: 'CD', destino: 'Loja 10', saidaCd: '14:30', motorista: 'Carlos Silva' }, { placa: 'ABC4D55', origem: 'CD', destino: 'Loja 22', saidaCd: '14:45', motorista: 'Roberto Alves' }] },
+    'transito_loja': { title: 'Em Trânsito (Loja > Loja)', vehicles: [{ placa: 'KLT8H12', origem: 'Loja 05', destino: 'Loja 15', saidaCd: '13:00', motorista: 'Ana Maria' }] },
+    'aguardando_val': { title: 'Aguardando Validação', vehicles: [{ placa: 'MCE1D23', origem: 'CD', destino: 'Loja 30', saidaCd: '16:00', motorista: 'Lucas Teixeira' }] },
+    'validacao': { title: 'Em Validação de Palete', vehicles: [{ placa: 'BRA1E22', origem: 'CD', destino: 'Loja 05', saidaCd: '14:40', motorista: 'Ricardo Nunes' }, { placa: 'MCE7G88', origem: 'CD', destino: 'Loja 12', saidaCd: '14:55', motorista: 'Pedro Henrique' }] },
+    'aguardando_saida': { title: 'Aguardando Saída da Loja', vehicles: [{ placa: 'RSL2C34', origem: 'CD', destino: 'Loja 22', saidaCd: '15:02', motorista: 'Fernando Melo' }] },
+    'retornando': { title: 'Retornando', vehicles: [{ placa: 'PFT4B56', origem: 'Loja 10', destino: 'CD', saidaCd: '12:00', motorista: 'Sérgio Lima' }] }
+};
+
+const doeRiskVehicles = [
+    { placa: 'MCE1D23', destino: 'Loja 18', carregamento: '25/02 10:15', tempoMedio: '45 min', limiteSaida: '25/02 11:00', status: 'Atraso' },
+    { placa: 'TRK1X55', destino: 'Loja 30', carregamento: '25/02 12:45', tempoMedio: '45 min', limiteSaida: '25/02 13:30', status: 'Atraso' },
+    { placa: 'ABC1A11', destino: 'Loja 02', carregamento: '25/02 13:40', tempoMedio: '45 min', limiteSaida: '25/02 14:25', status: 'Risco (> 80%)' }
 ];
 
-const heatMapRacks = [
-  { id: '12', temp: 95 }, { id: '13', temp: 80 }, { id: '14', temp: 40 },
-  { id: '15', temp: 20 }, { id: '16', temp: 15 }, { id: '17', temp: 10 },
-  { id: '01', temp: 15 }, { id: '02', temp: 25 }, { id: '03', temp: 60 },
-  { id: '04', temp: 85 }, { id: '05', temp: 45 }, { id: '06', temp: 30 },
-];
-
-const getHeatColor = (value) => {
-  if (value >= 85) return 'bg-red-500';
-  if (value >= 60) return 'bg-orange-500';
-  if (value >= 40) return 'bg-amber-400';
-  if (value >= 20) return 'bg-blue-400';
-  return 'bg-blue-200';
+const calcularTempoDecorrido = (horaSaida) => {
+    if (!horaSaida || horaSaida === '-') return '-';
+    const now = new Date();
+    const [h, m] = horaSaida.split(':').map(Number);
+    if (isNaN(h) || isNaN(m)) return '-';
+    let objTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m);
+    if (objTime > now) objTime.setDate(objTime.getDate() - 1);
+    const diffMins = Math.floor((now - objTime) / 60000);
+    const hrs = Math.floor(diffMins / 60);
+    const mins = diffMins % 60;
+    return hrs > 0 ? `${hrs}h ${mins.toString().padStart(2, '0')}m` : `${mins}m`;
 };
 
-// --- Mock Data: Recebimento ---
-const recebimentoData = {
-  cargas: { 
-    agendadas: 45, 
-    recebidas: 38, 
-    conferidas: 32, 
-    armazenadas: 25, 
-    noShow: 7, 
-    comDivergencia: 8, 
-    semDivergencia: 24 
-  },
-  paletes: { 
-    conferidos: 450, 
-    naDoca: 120, 
-    armazenados: 290, 
-    emTransito: 40
-  },
-  volumes: { 
-    itens: { agendados: 18500, conferidos: 15400 }, 
-    caixas: { agendados: 4500, conferidos: 3200 }, 
-    paletes: { agendados: 550, conferidos: 450 } 
-  }
-};
+const VisaoGeral = () => {
+    const [activeModal, setActiveModal] = useState(null);
+    const [detailsType, setDetailsType] = useState(null);
+    const [lastUpdate, setLastUpdate] = useState('');
+    const [autoRefresh, setAutoRefresh] = useState(0);
 
-// --- Mock Data: Separação ---
-const separacaoData = {
-  ondas: [
-    { id: 'Linha 01 (Matutina)', progresso: 100, status: 'Concluído', totalCx: '4.5k' },
-    { id: 'Linha 02 (Vespertina)', progresso: 68, status: 'Em Andamento', totalCx: '6.2k' },
-    { id: 'Linha 03 (Noturna)', progresso: 15, status: 'Iniciando', totalCx: '3.8k' },
-    { id: 'Linha 04 (Extra/Promoção)', progresso: 0, status: 'Aguardando', totalCx: '1.2k' }
-  ],
-  pedidosAtrasados: [
-    { loja: 'Loja 01 - Hiper Centro', rota: 'Rota A', pendente: '150 cx', status: 'Atrasado', prioridade: 'Alta', cutoff: '14:30' },
-    { loja: 'Loja 05 - Bairro Sul', rota: 'Rota B', pendente: '80 cx', status: 'Em Risco', prioridade: 'Média', cutoff: '15:00' },
-    { loja: 'Loja 08 - Expresso Norte', rota: 'Rota C', pendente: '320 cx', status: 'Atrasado', prioridade: 'Alta', cutoff: '14:00' },
-  ]
-};
+    const updateTime = () => setLastUpdate(new Date().toLocaleTimeString('pt-PT'));
 
-const produtividadeTable = [
-  { nome: 'João Silva', funcao: 'Separador (Secos)', caixasHora: 210, status: 'Ativo', performance: 'Acima da Meta' },
-  { nome: 'Maria Santos', funcao: 'Empilhador (Frios)', caixasHora: 185, status: 'Ativo', performance: 'Na Meta' },
-  { nome: 'Carlos Souza', funcao: 'Separador (FLV)', caixasHora: 140, status: 'Em Pausa', performance: 'Abaixo da Meta' },
-  { nome: 'Ana Costa', funcao: 'Conferente', caixasHora: 300, status: 'Ativo', performance: 'Acima da Meta' },
-  { nome: 'Roberto Alves', funcao: 'Ressupridor', caixasHora: 160, status: 'Ativo', performance: 'Na Meta' },
-];
+    useEffect(() => {
+        updateTime();
+        if (autoRefresh > 0) {
+            const interval = setInterval(updateTime, autoRefresh);
+            return () => clearInterval(interval);
+        }
+    }, [autoRefresh]);
 
-// --- Mock Data: FEFO (Validades) ---
-const fefoData = {
-  curvaVencimento: [
-    { faixa: 'Vencidos / Bloq.', qtd: 3200, color: 'bg-red-500', vr: 'R$ 14k' },
-    { faixa: '0 a 10 dias', qtd: 5400, color: 'bg-orange-500', vr: 'R$ 31k' },
-    { faixa: '11 a 30 dias', qtd: 10400, color: 'bg-amber-400', vr: 'R$ 51k' },
-    { faixa: '31 a 60 dias', qtd: 25000, color: 'bg-blue-400', vr: 'R$ 120k' },
-    { faixa: '> 60 dias', qtd: 95000, color: 'bg-emerald-500', vr: 'R$ 480k' }
-  ],
-  riscoSetor: [
-    { setor: 'Laticínios', valorRisco: 'R$ 45.200', itensCriticos: 1240, status: 'Crítico', percent: 85 },
-    { setor: 'Frios e Embutidos', valorRisco: 'R$ 38.150', itensCriticos: 850, status: 'Atenção', percent: 60 },
-    { setor: 'Açougue (Carnes)', valorRisco: 'R$ 22.400', itensCriticos: 410, status: 'Atenção', percent: 45 },
-    { setor: 'Mercearia Básica', valorRisco: 'R$ 15.300', itensCriticos: 700, status: 'Monitorar', percent: 20 }
-  ],
-  produtosCriticos: [
-    { sku: '10293', desc: 'IOGURTE MORANGO 170G', lote: 'L-8821', validade: '08/04/2026', qtd: '450 un', local: 'Rua 02 - N3', status: 'Vencido' },
-    { sku: '48291', desc: 'QUEIJO MUSSARELA 1KG', lote: 'L-9923', validade: '11/04/2026', qtd: '120 cx', local: 'Rua 03 - N1', status: 'Vence em 2 dias' },
-    { sku: '83712', desc: 'PRESUNTO COZIDO FATIADO', lote: 'L-1120', validade: '14/04/2026', qtd: '85 cx', local: 'Rua 03 - N2', status: 'Vence em 5 dias' },
-    { sku: '99281', desc: 'LEITE FERMENTADO 6X80G', lote: 'L-4421', validade: '19/04/2026', qtd: '320 cx', local: 'Rua 01 - N4', status: 'Vence em 10 dias' },
-    { sku: '55123', desc: 'REQUEIJAO TRADICIONAL 200G', lote: 'L-5522', validade: '24/04/2026', qtd: '150 cx', local: 'Rua 02 - N1', status: 'Vence em 15 dias' },
-  ]
-};
+    const openDetails = (type) => { setDetailsType(type); setActiveModal('details-status'); };
+    const closeModal = () => { setActiveModal(null); setDetailsType(null); };
 
-// --- Mock Data: Expedição ---
-const expedicaoData = {
-  kpis: {
-    paletesProntos: 345,
-    paletesCarregados: 820,
-    veiculosDoca: 6,
-    veiculosExpedidos: 14
-  },
-  stageOut: [
-    { id: 'Stage 01 (Rota Norte)', ocupacao: 95, paletes: 45, status: 'Lotado', color: 'bg-red-500' },
-    { id: 'Stage 02 (Rota Sul)', ocupacao: 65, paletes: 32, status: 'Normal', color: 'bg-blue-500' },
-    { id: 'Stage 03 (Hiper Centro)', ocupacao: 20, paletes: 10, status: 'Livre', color: 'bg-emerald-500' },
-    { id: 'Stage 04 (Express 24h)', ocupacao: 85, paletes: 25, status: 'Atenção', color: 'bg-amber-400' },
-  ],
-  docas: [
-    { id: 'Doca 01', veiculo: 'Camião Toco', placa: 'ABC-1234', rota: 'Rota Norte', progresso: 85, status: 'A Carregar' },
-    { id: 'Doca 02', veiculo: 'Carreta 3 Eixos', placa: 'XYZ-9876', rota: 'Hiper Centro', progresso: 100, status: 'Pronto a Sair' },
-    { id: 'Doca 03', veiculo: '-', placa: '-', rota: '-', progresso: 0, status: 'Livre' },
-    { id: 'Doca 04', veiculo: 'Truck Baú', placa: 'DEF-5678', rota: 'Rota Sul', progresso: 15, status: 'A Iniciar' },
-  ],
-  veiculosCarregados: [
-    { loja: 'Loja 12 - Centro', veiculo: 'Camião (XYZ-9876)', paletes: 28, hora: '16:15', status: 'Aguardar NFe', statusColor: 'text-amber-600 bg-amber-50 border-amber-200' },
-    { loja: 'Loja 05 - Bairro', veiculo: 'Van (JKL-3456)', paletes: 12, hora: '15:30', status: 'Em Trânsito', statusColor: 'text-blue-700 bg-blue-50 border-blue-200' },
-    { loja: 'Loja 08 - Shopping', veiculo: 'Truck (MNO-7890)', paletes: 24, hora: '14:45', status: 'Em Trânsito', statusColor: 'text-blue-700 bg-blue-50 border-blue-200' },
-    { loja: 'Loja 02 - Express', veiculo: 'VUC (PQR-1234)', paletes: 8, hora: '16:40', status: 'Liberado Portaria', statusColor: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
-  ]
-};
+    const topCards = [
+        { id: 'fleet', title: 'Status geral da frota\n(Disponiveis vs Em uso)', val: '13 / 16', sub: '81% Utilização', color: 'blue' },
+        { id: 'compliance', title: 'Conformidade de Lacre\n(Pós-Carregamento)', val: '92%', sub: '2 veículos não lacrados', color: 'rose' },
+        { id: 'waiting', title: 'Conformidade de Saída\n(Pós-Lacre)', val: '80%', sub: '3 veículos não saíram', color: 'orange' },
+        { id: 'risk', title: 'Entregas em\nRisco/Atraso', val: '5', sub: '2 atraso / 3 risco', color: 'red', pulse: true }
+    ];
 
-// --- Componente Principal ---
+    const GaugeSVG = ({ value, max, color, histColor, percentage }) => (
+        <svg viewBox="0 0 100 55" className="w-full h-full">
+            <path d="M 15 45 A 35 35 0 0 1 85 45" fill="none" stroke="#f1f5f9" strokeWidth="10" strokeLinecap="round" />
+            <path d="M 15 45 A 35 35 0 0 1 85 45" fill="none" stroke={color} strokeWidth="10" strokeLinecap="round" 
+                  style={{ strokeDasharray: 110, strokeDashoffset: 110 * (1 - percentage), transition: 'stroke-dashoffset 1s ease' }} />
+        </svg>
+    );
 
-export default function App() {
-  const [activeMenu, setActiveMenu] = useState('dashboard');
-
-  const menuItems = [
-    { id: 'dashboard', label: 'Visão Geral', icon: LayoutDashboard },
-    { id: 'recebimento', label: 'Recebimento', icon: ArrowDownToLine },
-    { id: 'separacao', label: 'Separação', icon: ShoppingCart },
-    { id: 'expedicao', label: 'Expedição', icon: Truck },
-    { id: 'equipe', label: 'Produtividade', icon: Users },
-    { id: 'inventario', label: 'Gestão de Validade', icon: ClipboardList },
-  ];
-
-  return (
-    <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
-      
-      {/* Sidebar Lateral */}
-      <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col shadow-xl z-20">
-        <div className="p-6 border-b border-slate-800 flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center font-bold text-white text-xl">W</div>
-          <div>
-            <h1 className="text-white font-bold text-lg leading-tight">TOTVS WMS</h1>
-            <p className="text-xs text-blue-400">Varejo Supermercados</p>
-          </div>
-        </div>
-        
-        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-          {menuItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveMenu(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                activeMenu === item.id 
-                  ? 'bg-blue-600 text-white' 
-                  : 'hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <item.icon size={18} />
-              {item.label}
-            </button>
-          ))}
-        </nav>
-        
-        <div className="p-4 border-t border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-slate-700 border-2 border-blue-500 flex items-center justify-center text-white font-bold">
-              PO
-            </div>
-            <div>
-              <p className="text-sm text-white font-medium">Product Owner</p>
-              <p className="text-xs text-slate-500">Administrador</p>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      {/* Área Principal */}
-      <main className="flex-1 flex flex-col overflow-hidden relative">
-        
-        {/* Top Header */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 z-10">
-          <h2 className="text-xl font-bold text-slate-800">
-            {menuItems.find(item => item.id === activeMenu)?.label}
-          </h2>
-          
-          <div className="flex items-center gap-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-              <input 
-                type="text" 
-                placeholder="Buscar SKU, Lote ou Endereço..." 
-                className="pl-10 pr-4 py-2 bg-slate-100 border-transparent rounded-lg text-sm focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none w-64 transition-all"
-              />
-            </div>
-            <button className="relative p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100">
-              <Bell size={20} />
-              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
-            </button>
-          </div>
-        </header>
-
-        {/* Conteúdo Rolável */}
-        <div className="flex-1 overflow-y-auto p-8">
-          
-          {/* --- VISÃO GERAL (NOVO DASHBOARD CAPA) --- */}
-          {activeMenu === 'dashboard' && (
-            <div className="animate-in fade-in duration-500">
-              <div className="mb-6">
-                <h2 className="text-lg font-bold text-slate-800">Termômetro da Operação</h2>
-                <p className="text-sm text-slate-500">Resumo consolidado em tempo real das frentes operacionais do CD.</p>
-              </div>
-
-              {/* KPIs de Alto Nível - AGORA COM TERMÔMETROS */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <ThermometerCard 
-                  title="Recebimento" 
-                  subtitle="Cargas Processadas"
-                  value={recebimentoData.cargas.recebidas} 
-                  unit="cargas"
-                  percentage={Math.round((recebimentoData.cargas.recebidas / recebimentoData.cargas.agendadas) * 100)}
-                  theme="blue"
-                  trend="up"
-                  trendValue="+5% vs ontem"
-                />
-                <ThermometerCard 
-                  title="Separação" 
-                  subtitle="Volume Concluído"
-                  value="11.4k" 
-                  unit="cx"
-                  percentage={72}
-                  theme="purple"
-                  trend="up"
-                  trendValue="+12% vs ontem"
-                />
-                <ThermometerCard 
-                  title="Produtividade" 
-                  subtitle="Tarefas Concluídas"
-                  value="4.8k" 
-                  unit="tarefas"
-                  percentage={85}
-                  theme="green"
-                  trend="none"
-                  trendValue="de 5.6k gerado"
-                />
-                <ThermometerCard 
-                  title="Pressão Operacional" 
-                  subtitle="Risco FEFO/Atrasos"
-                  value="3.2k" 
-                  unit="itens"
-                  percentage={85}
-                  theme="red"
-                  trend="down"
-                  trendValue="-2% vs ontem"
-                />
-              </div>
-
-              {/* Painéis Centrais (Trazendo Recebimento e Separação) */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                
-                {/* Resumo de Recebimento (Inspirado no painel selecionado) */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col">
-                  <div className="flex justify-between items-center mb-6">
-                    <div>
-                      <h3 className="font-bold text-slate-800">Fluxo da Doca (Recebimento)</h3>
-                      <p className="text-sm text-slate-500">Progresso e gargalo de veículos agendados.</p>
-                    </div>
-                    <button 
-                      onClick={() => setActiveMenu('recebimento')} 
-                      className="text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors"
-                    >
-                      Ver Detalhes
-                    </button>
-                  </div>
-                  
-                  <div className="flex-1 flex items-center">
-                    <div className="flex w-full justify-between gap-3 text-center">
-                      <div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg py-4 px-2">
-                        <p className="text-xs font-medium text-slate-500 mb-1">Agendadas</p>
-                        <h4 className="text-2xl font-bold text-slate-800">{recebimentoData.cargas.agendadas}</h4>
-                      </div>
-                      <div className="flex-1 bg-blue-50 border border-blue-200 rounded-lg py-4 px-2">
-                        <p className="text-xs font-medium text-blue-600 mb-1">Recebidas</p>
-                        <h4 className="text-2xl font-bold text-blue-800">{recebimentoData.cargas.recebidas}</h4>
-                      </div>
-                      <div className="flex-1 bg-indigo-50 border border-indigo-200 rounded-lg py-4 px-2 relative">
-                        <p className="text-xs font-medium text-indigo-600 mb-1">Conferidas</p>
-                        <h4 className="text-2xl font-bold text-indigo-800">{recebimentoData.cargas.conferidas}</h4>
-                        {/* Indicador de Gargalo Opcional */}
-                        <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-                          Gargalo
-                        </div>
-                      </div>
-                      <div className="flex-1 bg-green-50 border border-green-200 rounded-lg py-4 px-2">
-                        <p className="text-xs font-medium text-green-600 mb-1">Armazenadas</p>
-                        <h4 className="text-2xl font-bold text-green-800">{recebimentoData.cargas.armazenadas}</h4>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Resumo de Separação (Linhas) */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col">
-                  <div className="flex justify-between items-center mb-6">
-                    <div>
-                      <h3 className="font-bold text-slate-800">Status das Linhas de Separação</h3>
-                      <p className="text-sm text-slate-500">Andamento das rotas para expedição.</p>
-                    </div>
-                    <button 
-                      onClick={() => setActiveMenu('separacao')} 
-                      className="text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors"
-                    >
-                      Ver Detalhes
-                    </button>
-                  </div>
-                  
-                  <div className="flex-1 flex flex-col justify-center gap-4">
-                    {separacaoData.ondas.slice(0, 3).map((onda, idx) => (
-                      <div key={idx}>
-                        <div className="flex justify-between text-xs font-semibold mb-1">
-                          <span className="text-slate-700">{onda.id}</span>
-                          <span className={`${onda.progresso === 100 ? 'text-green-600' : 'text-slate-600'}`}>{onda.progresso}%</span>
-                        </div>
-                        <div className="w-full bg-slate-100 rounded-full h-2">
-                          <div 
-                            className={`h-2 rounded-full transition-all duration-1000 ${onda.progresso === 100 ? 'bg-green-500' : 'bg-blue-600'}`} 
-                            style={{ width: `${onda.progresso}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Alertas Críticos e Destaques da Equipe */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* Quadro de Avisos (Alertas de todas as áreas) */}
-                <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                  <h3 className="font-bold text-slate-800 mb-4">Quadro de Atenção Global</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-4 p-3 bg-red-50 border border-red-100 rounded-lg">
-                      <AlertTriangle className="text-red-500 flex-shrink-0" size={24} />
-                      <div className="flex-1">
-                        <p className="text-sm font-bold text-red-800">Risco Crítico de Atraso de Expedição</p>
-                        <p className="text-xs text-red-600">A Loja 01 - Hiper Centro possui 150 caixas pendentes com Cut-off às 14:30.</p>
-                      </div>
-                      <button onClick={() => setActiveMenu('separacao')} className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-semibold rounded transition-colors">Ação</button>
-                    </div>
-
-                    <div className="flex items-center gap-4 p-3 bg-amber-50 border border-amber-100 rounded-lg">
-                      <PackageX className="text-amber-500 flex-shrink-0" size={24} />
-                      <div className="flex-1">
-                        <p className="text-sm font-bold text-amber-800">Divergências no Recebimento</p>
-                        <p className="text-xs text-amber-600">{recebimentoData.cargas.comDivergencia} cargas conferidas com quebra de confiança aguardam aprovação fiscal/qualidade.</p>
-                      </div>
-                      <button onClick={() => setActiveMenu('recebimento')} className="px-3 py-1 bg-amber-100 hover:bg-amber-200 text-amber-700 text-xs font-semibold rounded transition-colors">Ação</button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Top Performers (Produtividade) */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-slate-800">Top Produtividade</h3>
-                    <Users size={16} className="text-slate-400" />
-                  </div>
-                  <div className="space-y-4">
-                    {produtividadeTable.filter(p => p.performance === 'Acima da Meta').slice(0, 3).map((op, idx) => (
-                      <div key={idx} className="flex items-center justify-between border-b border-slate-50 pb-2 last:border-0 last:pb-0">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold shadow-inner">
-                            {op.nome.split(' ').map(n=>n[0]).join('')}
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-slate-700">{op.nome}</p>
-                            <p className="text-[10px] text-slate-500 uppercase">{op.funcao}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <span className="block text-sm font-bold text-green-600">{op.caixasHora}</span>
-                          <span className="block text-[9px] text-slate-400">cx/h</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <button onClick={() => setActiveMenu('equipe')} className="w-full mt-4 py-2 text-xs font-semibold text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors">
-                    Ver Equipe Completa
-                  </button>
-                </div>
-
-              </div>
-            </div>
-          )}
-
-          {/* --- DASHBOARD DE RECEBIMENTO --- */}
-          {activeMenu === 'recebimento' && (
-            <div className="animate-in fade-in duration-500">
-              
-              {/* Topo: Volumes do Dia padronizado com KpiCard */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                
-                <VolumeProgressCard 
-                  title="Volumes em Itens" 
-                  agendados={recebimentoData.volumes.itens.agendados} 
-                  conferidos={recebimentoData.volumes.itens.conferidos} 
-                  unitText="conferidos" 
-                  formatK={true} 
-                  theme="blue"
-                />
-
-                <VolumeProgressCard 
-                  title="Volumes em Caixas" 
-                  agendados={recebimentoData.volumes.caixas.agendados} 
-                  conferidos={recebimentoData.volumes.caixas.conferidos} 
-                  unitText="conferidas" 
-                  formatK={true} 
-                  theme="purple"
-                />
-
-                <VolumeProgressCard 
-                  title="Volumes em Paletes" 
-                  agendados={recebimentoData.volumes.paletes.agendados} 
-                  conferidos={recebimentoData.volumes.paletes.conferidos} 
-                  unitText="conferidos" 
-                  formatK={false} 
-                  theme="amber"
-                />
-
-                <KpiCard 
-                  title="Tempo Méd. Descarga" 
-                  value="45" 
-                  unit="min" 
-                  trend="up" 
-                  trendValue="+10min acima da meta" 
-                  alert={true} 
-                  theme="red"
-                />
-              </div>
-
-              {/* Status das Cargas e Divergências */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                
-                {/* Funil de Cargas */}
-                <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                  <div className="flex justify-between items-center mb-6">
-                    <div>
-                      <h3 className="font-bold text-slate-800">Progresso de Cargas do Dia</h3>
-                      <p className="text-sm text-slate-500">Acompanhamento do status de veículos agendados.</p>
-                    </div>
-                    <div className="flex bg-red-50 text-red-700 px-3 py-1.5 rounded-lg border border-red-200 items-center gap-2 font-semibold text-sm">
-                      <CalendarX size={16} />
-                      {recebimentoData.cargas.noShow} No Show
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col md:flex-row justify-between gap-4">
-                    {/* Agendadas */}
-                    <div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-4 text-center">
-                      <p className="text-slate-500 text-sm font-medium mb-1">Agendadas</p>
-                      <h4 className="text-3xl font-bold text-slate-800">{recebimentoData.cargas.agendadas}</h4>
-                    </div>
-                    {/* Recebidas */}
-                    <div className="flex-1 bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
-                      <p className="text-blue-600 text-sm font-medium mb-1">Recebidas</p>
-                      <h4 className="text-3xl font-bold text-blue-800">{recebimentoData.cargas.recebidas}</h4>
-                    </div>
-                    {/* Conferidas */}
-                    <div className="flex-1 bg-indigo-50 border border-indigo-200 rounded-lg p-4 text-center">
-                      <p className="text-indigo-600 text-sm font-medium mb-1">Conferidas</p>
-                      <h4 className="text-3xl font-bold text-indigo-800">{recebimentoData.cargas.conferidas}</h4>
-                    </div>
-                    {/* Armazenadas */}
-                    <div className="flex-1 bg-green-50 border border-green-200 rounded-lg p-4 text-center relative overflow-hidden">
-                      <p className="text-green-600 text-sm font-medium mb-1">Armazenadas</p>
-                      <h4 className="text-3xl font-bold text-green-800">{recebimentoData.cargas.armazenadas}</h4>
-                      <div className="absolute bottom-0 left-0 w-full h-1 bg-green-500"></div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Qualidade do Recebimento (Divergências) */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col">
-                  <h3 className="font-bold text-slate-800 mb-1">Qualidade (Cargas Conferidas)</h3>
-                  <p className="text-sm text-slate-500 mb-6">Índice de quebra de confiança no recebimento.</p>
-                  
-                  <div className="flex-1 flex flex-col justify-center gap-6">
-                    <div>
-                      <div className="flex justify-between text-sm font-semibold mb-2">
-                        <span className="flex items-center gap-2 text-green-700">
-                          <CheckCircle size={16} /> Sem Divergência
-                        </span>
-                        <span>{recebimentoData.cargas.semDivergencia}</span>
-                      </div>
-                      <div className="w-full bg-slate-100 rounded-full h-3">
-                        <div className="bg-green-500 h-3 rounded-full" style={{ width: `${(recebimentoData.cargas.semDivergencia / recebimentoData.cargas.conferidas) * 100}%` }}></div>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <div className="flex justify-between text-sm font-semibold mb-2">
-                        <span className="flex items-center gap-2 text-red-600">
-                          <AlertCircle size={16} /> Com Divergência
-                        </span>
-                        <span>{recebimentoData.cargas.comDivergencia}</span>
-                      </div>
-                      <div className="w-full bg-slate-100 rounded-full h-3">
-                        <div className="bg-red-500 h-3 rounded-full" style={{ width: `${(recebimentoData.cargas.comDivergencia / recebimentoData.cargas.conferidas) * 100}%` }}></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Status Operacional Físico - Visão de Paletes */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <div>
-                    <h3 className="font-bold text-slate-800">Status Físico dos Paletes Conferidos</h3>
-                    <p className="text-sm text-slate-500">Onde os {recebimentoData.paletes.conferidos} paletes recebidos hoje estão neste momento?</p>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-5">
-                  {/* Na Doca */}
-                  <div className="flex items-center gap-4">
-                    <div className="w-48 text-sm font-semibold text-slate-700 flex justify-between">
-                      <span>Aguardando na Doca</span>
-                      <span className="text-slate-500">{recebimentoData.paletes.naDoca} PL</span>
-                    </div>
-                    <div className="flex-1 bg-slate-100 rounded-full h-4">
-                      <div className="bg-amber-400 h-4 rounded-full" style={{ width: `${(recebimentoData.paletes.naDoca / recebimentoData.paletes.conferidos) * 100}%` }}></div>
-                    </div>
-                    <span className="w-12 text-right text-sm font-bold text-amber-500">{Math.round((recebimentoData.paletes.naDoca / recebimentoData.paletes.conferidos) * 100)}%</span>
-                  </div>
-
-                  {/* Em Trânsito */}
-                  <div className="flex items-center gap-4">
-                    <div className="w-48 text-sm font-semibold text-slate-700 flex justify-between">
-                      <span>Na Rua (Sem Endereço)</span>
-                      <span className="text-slate-500">{recebimentoData.paletes.emTransito} PL</span>
-                    </div>
-                    <div className="flex-1 bg-slate-100 rounded-full h-4 relative">
-                      <div className="bg-blue-500 h-4 rounded-full" style={{ width: `${(recebimentoData.paletes.emTransito / recebimentoData.paletes.conferidos) * 100}%` }}></div>
-                      {recebimentoData.paletes.emTransito > 20 && (
-                        <div className="absolute top-1/2 -translate-y-1/2 left-[calc(100%+8px)] text-xs text-red-500 font-bold whitespace-nowrap flex items-center gap-1">
-                          <AlertTriangle size={12} /> Alerta: Operador não confirmou endereço
-                        </div>
-                      )}
-                    </div>
-                    <span className="w-12 text-right text-sm font-bold text-blue-500">{Math.round((recebimentoData.paletes.emTransito / recebimentoData.paletes.conferidos) * 100)}%</span>
-                  </div>
-
-                  {/* Armazenados */}
-                  <div className="flex items-center gap-4">
-                    <div className="w-48 text-sm font-semibold text-slate-700 flex justify-between">
-                      <span>Armazenados</span>
-                      <span className="text-slate-500">{recebimentoData.paletes.armazenados} PL</span>
-                    </div>
-                    <div className="flex-1 bg-slate-100 rounded-full h-4">
-                      <div className="bg-green-500 h-4 rounded-full" style={{ width: `${(recebimentoData.paletes.armazenados / recebimentoData.paletes.conferidos) * 100}%` }}></div>
-                    </div>
-                    <span className="w-12 text-right text-sm font-bold text-green-500">{Math.round((recebimentoData.paletes.armazenados / recebimentoData.paletes.conferidos) * 100)}%</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* --- DASHBOARD DE SEPARAÇÃO --- */}
-          {activeMenu === 'separacao' && (
-            <div className="animate-in fade-in duration-500">
-              {/* Alerta Global */}
-              <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
-                <Clock className="text-amber-500 mt-0.5" size={20} />
+    return (
+        <div className="space-y-10 animate-in fade-in duration-500">
+            <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
                 <div>
-                  <h4 className="text-amber-800 font-semibold text-sm">Risco de Atraso na Expedição (Cut-off)</h4>
-                  <p className="text-amber-700 text-sm mt-1">A separação da <span className="font-bold">Linha 02</span> está operando 15% abaixo da produtividade necessária para cumprir o horário de corte das 15:00. Considere remanejar operadores da área de FLV para Mercearia Seca.</p>
+                    <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight">Dashboard Operacional de Entregas</h2>
+                    <p className="text-slate-500 font-medium mt-1">Performance em tempo real e monitoramento de fluxo.</p>
                 </div>
-                <button className="ml-auto px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded shadow-sm transition-colors">
-                  Ver Sugestão de Remanejamento
-                </button>
-              </div>
-
-              {/* Cards de KPIs */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <KpiCard title="Lotes de Separação" value="4.2k" unit="lotes" trend="up" trendValue="81% de 5.2k gerados" />
-                <VolumeProgressCard 
-                  title="Progresso em Itens" 
-                  agendados={84500} 
-                  conferidos={62300} 
-                  unitText="itens" 
-                  formatK={true} 
-                  theme="indigo"
-                  targetLabel="a separar"
-                />
-                <KpiCard title="Progresso em Volumes" value="11.4k" unit="/ 15.7k" trend="up" trendValue="72% concluído" />
-                <KpiCard title="Taxa de Ruptura (Corte de Itens)" value="0.8" unit="%" trend="down" trendValue="-0.2% vs ontem" alert={false} />
-              </div>
-
-              {/* Gráficos Row */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                {/* Progresso por Linha */}
-                <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col">
-                  <div className="flex justify-between items-center mb-6">
-                    <div>
-                      <h3 className="font-bold text-slate-800">Progresso por Linha de Separação</h3>
-                      <p className="text-sm text-slate-500">Monitoramento do avanço das rotas consolidadas.</p>
+                <div className="flex items-center gap-4 bg-white p-3 rounded-xl shadow-sm border border-slate-200">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Atualização:</span>
+                        <select value={autoRefresh} onChange={e => setAutoRefresh(Number(e.target.value))} className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-sm font-semibold text-slate-700 outline-none">
+                            <option value="0">Manual</option>
+                            <option value="60000">1 min</option>
+                            <option value="300000">5 min</option>
+                        </select>
                     </div>
-                  </div>
-                  
-                  <div className="flex-1 flex flex-col justify-center gap-6">
-                    {separacaoData.ondas.map((onda, idx) => (
-                      <div key={idx}>
-                        <div className="flex justify-between text-sm font-semibold mb-2">
-                          <span className="text-slate-700">{onda.id} <span className="text-slate-400 font-normal ml-2">({onda.totalCx} caixas)</span></span>
-                          <span className="flex items-center gap-3">
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${onda.progresso === 100 ? 'bg-green-100 text-green-700' : onda.progresso > 0 ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>
-                              {onda.status}
-                            </span>
-                            <span className="w-10 text-right">{onda.progresso}%</span>
-                          </span>
+                    <div className="w-px h-8 bg-slate-200"></div>
+                    <div className="flex flex-col text-right">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Atualizado às</span>
+                        <div className="flex items-center gap-2 justify-end">
+                            <span className="text-sm font-black text-slate-800">{lastUpdate || '--:--'}</span>
+                            <button onClick={updateTime} className="text-blue-500 hover:text-blue-700"><RefreshCw size={14} /></button>
                         </div>
-                        <div className="w-full bg-slate-100 rounded-full h-3">
-                          <div 
-                            className={`h-3 rounded-full transition-all duration-1000 ${onda.progresso === 100 ? 'bg-green-500' : 'bg-blue-600'}`} 
-                            style={{ width: `${onda.progresso}%` }}
-                          ></div>
+                    </div>
+                </div>
+            </header>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {topCards.map(c => (
+                    <div key={c.id} onClick={() => setActiveModal(c.id)} className={`bg-white p-6 rounded-2xl shadow-md border-b-4 border-${c.color}-500 cursor-pointer hover:scale-[1.02] transition-transform`}>
+                        <p className="text-[11px] font-bold text-slate-400 uppercase leading-tight h-8 whitespace-pre-line">{c.title}</p>
+                        <p className="text-4xl font-black text-slate-900 mt-2">{c.val}</p>
+                        <div className="flex justify-between items-center mt-1">
+                            <p className={`text-xs text-${c.color}-500 font-bold ${c.pulse ? 'animate-pulse' : ''}`}>{c.sub}</p>
+                            <ChevronRight size={16} className={`text-slate-300 group-hover:text-${c.color}-500`} />
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Mapa de Calor Top-Down: Concentração de Operadores */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col">
-                  <div className="mb-4 flex justify-between items-center">
-                    <div>
-                      <h3 className="font-bold text-slate-800">Tráfego de Picking (Calor)</h3>
-                      <p className="text-sm text-slate-500">Concentração atual de operadores.</p>
                     </div>
-                    <Map className="text-slate-400" size={20} />
-                  </div>
-                  
-                  <div className="flex-1 flex flex-col relative">
-                    <div className="flex justify-end gap-2 text-[10px] text-slate-500 items-center mb-3">
-                      <span className="flex items-center gap-1"><div className="w-2 h-2 bg-blue-200 rounded-sm"></div> Livre</span>
-                      <span className="flex items-center gap-1"><div className="w-2 h-2 bg-amber-400 rounded-sm"></div> Médio</span>
-                      <span className="flex items-center gap-1"><div className="w-2 h-2 bg-red-500 rounded-sm"></div> Crítico (Gargalo)</span>
-                    </div>
-
-                    <div className="grid grid-cols-6 gap-x-2 gap-y-4 flex-1 items-center bg-slate-50 p-4 rounded-lg border border-slate-200/60 shadow-inner">
-                      {heatMapRacks.map((rack, idx) => (
-                        <div key={idx} className="flex flex-col items-center group relative cursor-pointer hover:-translate-y-0.5 transition-transform">
-                          <div className="absolute -top-8 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
-                            Rua {rack.id}: Tráfego {rack.temp}%
-                          </div>
-                          <div className={`w-full h-12 rounded-sm transition-colors duration-300 shadow-sm border border-black/5 ${getHeatColor(rack.temp)}`}></div>
-                          <span className="text-[9px] text-slate-500 mt-1.5 font-bold">R{rack.id}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Tabela de Dados: Lojas Atrasadas */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-                  <div>
-                    <h3 className="font-bold text-slate-800">Pedidos de Loja em Atraso / Risco</h3>
-                    <p className="text-sm text-slate-500">Acompanhamento detalhado das rotas críticas para expedição.</p>
-                  </div>
-                  <button className="text-sm font-semibold text-blue-600 hover:text-blue-800">Visualizar Todas as Lojas</button>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-white border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
-                        <th className="px-6 py-4 font-semibold">Loja / Destino</th>
-                        <th className="px-6 py-4 font-semibold">Rota Consolidada</th>
-                        <th className="px-6 py-4 font-semibold">Horário Limite (Cut-off)</th>
-                        <th className="px-6 py-4 font-semibold">Volume Restante</th>
-                        <th className="px-6 py-4 font-semibold text-right">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-sm text-slate-700 divide-y divide-slate-100">
-                      {separacaoData.pedidosAtrasados.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-6 py-4 font-bold text-slate-800">
-                            {row.loja}
-                          </td>
-                          <td className="px-6 py-4 text-slate-600">
-                            {row.rota}
-                          </td>
-                          <td className="px-6 py-4 font-semibold text-slate-700">
-                            {row.cutoff}
-                          </td>
-                          <td className="px-6 py-4 font-bold text-slate-800">
-                            {row.pendente}
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                              row.status === 'Atrasado' ? 'bg-red-50 text-red-700 border-red-200' : 
-                              row.status === 'Em Risco' ? 'bg-amber-50 text-amber-700 border-amber-200' : 
-                              'bg-green-50 text-green-700 border-green-200'
-                            }`}>
-                              {row.status === 'Atrasado' && <span className="w-1.5 h-1.5 rounded-full bg-red-600 mr-1.5"></span>}
-                              {row.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                ))}
             </div>
-          )}
 
-          {/* --- DASHBOARD DE PRODUTIVIDADE --- */}
-          {activeMenu === 'equipe' && (
-            <div className="animate-in fade-in duration-500">
-              
-              {/* Cards de KPIs */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <KpiCard title="Média Global" value="195" unit="cx/h" icon={TrendingUp} trend="up" trendValue="+12 cx/h vs ontem" />
-                <KpiCard title="Operadores Logados" value="42" unit="/ 45" icon={Users} trend="none" trendValue="Turno 1" />
-                <KpiCard title="Tempo Ocioso Médio" value="12" unit="%" icon={Clock} trend="down" trendValue="-2% vs meta" alert={false} />
-                <KpiCard title="Tarefas Concluídas" value="4.8" unit="k" icon={ClipboardList} trend="up" trendValue="85% do previsto hoje" />
-              </div>
-
-              {/* Tabela de Produtividade */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-                  <div>
-                    <h3 className="font-bold text-slate-800">Ranking de Operadores no Turno</h3>
-                    <p className="text-sm text-slate-500">Monitoramento individual de eficiência.</p>
-                  </div>
-                  <button className="text-sm font-semibold text-blue-600 hover:text-blue-800">Exportar Planilha</button>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-white border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
-                        <th className="px-6 py-4 font-semibold">Operador</th>
-                        <th className="px-6 py-4 font-semibold">Função / Setor</th>
-                        <th className="px-6 py-4 font-semibold text-center">Taxa de Produção (Cx/h)</th>
-                        <th className="px-6 py-4 font-semibold text-center">Status Físico</th>
-                        <th className="px-6 py-4 font-semibold text-right">Performance vs Meta</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-sm text-slate-700 divide-y divide-slate-100">
-                      {produtividadeTable.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-6 py-4 font-bold text-slate-800 flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
-                              {row.nome.split(' ').map(n => n[0]).join('')}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {[ 
+                    { title: 'Paletes Prontos', val: 540, max: 700, unit: 'Paletes', med: 'Média 30 dias: 450', color: '#ef4444', pct: 540/700 },
+                    { title: 'Carregamento ao Lacre', val: 25, max: 40, unit: 'Minutos', med: 'Média 30 dias: 20 min', color: '#3b82f6', pct: 25/40 },
+                    { title: 'Lacre à Saída', val: 15, max: 40, unit: 'Minutos', med: 'Média 30 dias: 17 min', color: '#10b981', pct: 15/40 }
+                ].map((g, i) => (
+                    <div key={i} className="bg-white p-8 rounded-[2.5rem] shadow-md border border-slate-100 flex flex-col items-center">
+                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 text-center">{g.title}</h3>
+                        <div className="relative w-80 h-44">
+                            <GaugeSVG value={g.val} max={g.max} color={g.color} percentage={g.pct} />
+                            <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
+                                <span className="text-6xl font-black text-slate-700 leading-none">{g.val}</span>
+                                <span className="text-sm font-black text-slate-400 uppercase mt-2">{g.unit}</span>
                             </div>
-                            {row.nome}
-                          </td>
-                          <td className="px-6 py-4 text-slate-600">{row.funcao}</td>
-                          <td className="px-6 py-4 font-bold text-slate-800 text-center text-lg">{row.caixasHora}</td>
-                          <td className="px-6 py-4 text-center">
-                            <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                              row.status === 'Ativo' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
-                            }`}>
-                              {row.status === 'Ativo' && <span className="w-1.5 h-1.5 rounded-full bg-green-600 mr-1.5"></span>}
-                              {row.status === 'Em Pausa' && <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5"></span>}
-                              {row.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <span className={`font-semibold ${
-                              row.performance === 'Acima da Meta' ? 'text-green-600' : 
-                              row.performance === 'Abaixo da Meta' ? 'text-red-500' : 'text-slate-600'
-                            }`}>
-                              {row.performance}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
+                        </div>
+                        <p className="text-sm text-slate-400 font-bold uppercase mt-6 tracking-wide text-center">{g.med}</p>
+                    </div>
+                ))}
             </div>
-          )}
 
-          {/* --- DASHBOARD DE GESTÃO FEFO (ATIVO) --- */}
-          {activeMenu === 'inventario' && (
-            <div className="animate-in fade-in duration-500">
-              
-              <div className="mb-6">
-                <h2 className="text-lg font-bold text-slate-800">Monitoramento de Validades (FEFO)</h2>
-                <p className="text-sm text-slate-500">Análise de risco financeiro e distribuição de estoque por data de expiração.</p>
-              </div>
-
-              {/* KPIs Principais de Vencimento */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <KpiCard 
-                  title="Produtos Vencidos" value="3.2k" unit="itens" 
-                  icon={AlertOctagon} trend="up" trendValue="+12% vs meta perdas" alert={true} theme="red" 
-                />
-                <KpiCard 
-                  title="Vencimento Próximo (< 30d)" value="15.8k" unit="itens" 
-                  icon={CalendarClock} trend="down" trendValue="-5% vs mês anterior" theme="amber" 
-                />
-                <KpiCard 
-                  title="Risco Financeiro Imediato" value="R$ 96k" unit="" 
-                  icon={DollarSign} trend="up" trendValue="Em itens de alto risco" theme="indigo" 
-                />
-                <KpiCard 
-                  title="Acuracidade FEFO (Separação)" value="98.5" unit="%" 
-                  icon={ShieldCheck} trend="up" trendValue="+0.2% aderência" theme="green" 
-                />
-              </div>
-
-              {/* Análises Gráficas */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                
-                {/* 1. Curva de Vencimento (Histograma de Validades) */}
-                <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col">
-                  <div className="flex justify-between items-center mb-6">
-                    <div>
-                      <h3 className="font-bold text-slate-800">Curva de Vencimento (Próximos 60+ dias)</h3>
-                      <p className="text-sm text-slate-500">Volume de estoque distribuído por tempo restante de validade.</p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch pb-12">
+                <div className="bg-white p-8 rounded-[2rem] shadow-md border border-slate-50 flex flex-col h-full">
+                    <h3 className="text-lg font-bold text-slate-800 mb-8 flex items-center gap-2"><div className="w-1.5 h-6 bg-indigo-500 rounded-full"></div>Etapas das Viagens em Curso (15)</h3>
+                    <div className="space-y-6 flex-grow">
+                        {[
+                            { id: 'transito_cd', label: 'Em Trânsito (CD > Loja)', v: '05', p: '33%', color: 'blue' },
+                            { id: 'transito_loja', label: 'Em Trânsito (Loja > Loja)', v: '02', p: '13%', color: 'cyan' },
+                            { id: 'aguardando_val', label: 'Aguardando Validação', v: '02', p: '13%', color: 'rose' },
+                            { id: 'validacao', label: 'Em Validação de Palete', v: '03', p: '20%', color: 'amber' }
+                        ].map((e, i) => (
+                            <div key={i} onClick={() => openDetails(e.id)} className={`flex flex-col justify-center p-4 bg-slate-50 rounded-2xl border-l-4 border-${e.color}-500 shadow-sm cursor-pointer hover:bg-${e.color}-50 transition-all h-[72px] group`}>
+                                <div className="flex justify-between items-center mb-1.5">
+                                    <span className={`text-[13px] font-bold text-slate-600 uppercase group-hover:text-${e.color}-700`}>{e.label}</span>
+                                    <div className="flex items-baseline gap-1.5"><span className={`text-xl font-black text-${e.color}-600`}>{e.v}</span><span className="text-[11px] font-bold text-slate-400">{e.p}</span></div>
+                                </div>
+                                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden"><div className={`bg-${e.color}-500 h-full shadow-sm`} style={{ width: e.p }}></div></div>
+                            </div>
+                        ))}
                     </div>
-                  </div>
-                  
-                  <div className="flex-1 flex items-end h-48 gap-3 mt-4">
-                    {fefoData.curvaVencimento.map((item, idx) => {
-                      const maxQtd = Math.max(...fefoData.curvaVencimento.map(d => d.qtd));
-                      return (
-                        <div key={idx} className="flex flex-col items-center flex-1 group relative h-full justify-end">
-                          <div className="absolute -top-12 bg-slate-800 text-white text-xs py-1.5 px-3 rounded shadow-lg hidden group-hover:flex flex-col items-center z-10 whitespace-nowrap">
-                            <span className="font-bold">{item.qtd.toLocaleString('pt-BR')} un</span>
-                            <span className="text-[10px] text-slate-300">Risco: {item.vr}</span>
-                          </div>
-                          <div 
-                            className={`w-full rounded-t-md transition-all duration-500 ${item.color} opacity-85 group-hover:opacity-100 shadow-sm`} 
-                            style={{ height: `${(item.qtd / maxQtd) * 100}%`, minHeight: '10%' }}
-                          ></div>
-                          <span className="text-[11px] text-slate-600 mt-3 font-semibold text-center h-8 leading-tight">{item.faixa}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
                 </div>
-
-                {/* 2. Concentração de Risco por Setor */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col">
-                  <h3 className="font-bold text-slate-800 mb-1">Risco Financeiro por Setor</h3>
-                  <p className="text-sm text-slate-500 mb-6">Categorias com maior volume a vencer.</p>
-                  
-                  <div className="flex-1 flex flex-col gap-5 justify-center">
-                    {fefoData.riscoSetor.map((setor, idx) => (
-                      <div key={idx} className="flex flex-col gap-2">
-                        <div className="flex justify-between items-end">
-                          <span className="text-sm font-semibold text-slate-700">{setor.setor}</span>
-                          <span className="text-sm font-bold text-slate-800">{setor.valorRisco}</span>
-                        </div>
-                        <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full ${setor.status === 'Crítico' ? 'bg-red-500' : setor.status === 'Atenção' ? 'bg-orange-400' : 'bg-blue-400'}`} 
-                            style={{ width: `${setor.percent}%` }}
-                          ></div>
-                        </div>
-                        <div className="flex justify-between text-[10px] text-slate-500 font-medium">
-                          <span>{setor.status}</span>
-                          <span>{setor.itensCriticos} itens mapeados</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                
+                <div className="bg-white p-8 rounded-[2rem] shadow-md border border-slate-50 flex flex-col h-full">
+                    <h3 className="text-lg font-bold text-slate-800 mb-8 flex items-center gap-2"><div className="w-1.5 h-6 bg-blue-500 rounded-full"></div>Médias de Tempo por Etapa</h3>
+                    <div className="space-y-6 flex-grow">
+                         {[
+                            { id: 'transito_cd', label: 'Em Trânsito (CD > Loja)', v: '75', p: '75%', color: 'blue' },
+                            { id: 'transito_loja', label: 'Em Trânsito (Loja > Loja)', v: '35', p: '35%', color: 'cyan' },
+                            { id: 'aguardando_val', label: 'Aguardando Validação', v: '15', p: '25%', color: 'rose' },
+                            { id: 'validacao', label: 'Em Validação de Palete', v: '22', p: '45%', color: 'amber' }
+                        ].map((e, i) => (
+                            <div key={i} onClick={() => openDetails(e.id)} className={`flex flex-col justify-center p-4 bg-slate-50 rounded-2xl border-l-4 border-${e.color}-500 shadow-sm cursor-pointer hover:bg-${e.color}-50 transition-all h-[72px] group`}>
+                                <div className="flex justify-between items-center mb-1.5">
+                                    <span className={`text-[13px] font-bold text-slate-700 uppercase group-hover:text-${e.color}-700`}>{e.label}</span>
+                                    <span className={`text-xl font-black text-${e.color}-600`}>{e.v} <span className="text-[10px] text-slate-400 font-bold lowercase">min</span></span>
+                                </div>
+                                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden border border-slate-100"><div className={`bg-${e.color}-500 h-full shadow-sm`} style={{ width: e.p }}></div></div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-              </div>
-
-              {/* Tabela de Ação: Produtos Críticos */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-                  <div>
-                    <h3 className="font-bold text-slate-800">Plano de Ação: Produtos Críticos</h3>
-                    <p className="text-sm text-slate-500">SKUs com validade expirada ou expirando nos próximos 15 dias.</p>
-                  </div>
-                  <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded shadow-sm transition-colors">
-                    Gerar Tarefas de Inspeção
-                  </button>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-white border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
-                        <th className="px-6 py-4 font-semibold">SKU / Produto</th>
-                        <th className="px-6 py-4 font-semibold">Lote</th>
-                        <th className="px-6 py-4 font-semibold">Data de Validade</th>
-                        <th className="px-6 py-4 font-semibold">Localização Atual</th>
-                        <th className="px-6 py-4 font-semibold text-center">Qtd. Afetada</th>
-                        <th className="px-6 py-4 font-semibold text-right">Status / Alerta</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-sm text-slate-700 divide-y divide-slate-100">
-                      {fefoData.produtosCriticos.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-6 py-4">
-                            <span className="block font-bold text-slate-800">{row.desc}</span>
-                            <span className="block text-xs text-slate-400">SKU: {row.sku}</span>
-                          </td>
-                          <td className="px-6 py-4 text-slate-600 font-mono text-xs">{row.lote}</td>
-                          <td className="px-6 py-4 font-semibold text-slate-700">{row.validade}</td>
-                          <td className="px-6 py-4 text-slate-600 font-medium">{row.local}</td>
-                          <td className="px-6 py-4 font-bold text-slate-800 text-center">{row.qtd}</td>
-                          <td className="px-6 py-4 text-right">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-bold border ${
-                              row.status === 'Vencido' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-amber-50 text-amber-700 border-amber-200'
-                            }`}>
-                              {row.status === 'Vencido' && <AlertOctagon size={12} className="mr-1.5" />}
-                              {row.status !== 'Vencido' && <Clock size={12} className="mr-1.5" />}
-                              {row.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
             </div>
-          )}
 
-          {/* --- DASHBOARD DE EXPEDIÇÃO (NOVO) --- */}
-          {activeMenu === 'expedicao' && (
-            <div className="animate-in fade-in duration-500">
-              
-              <div className="mb-6">
-                <h2 className="text-lg font-bold text-slate-800">Controlo de Expedição</h2>
-                <p className="text-sm text-slate-500">Monitorização de pulmões de saída (Stage-Out), carregamento de docas e expedição de veículos.</p>
-              </div>
-
-              {/* KPIs Principais */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <KpiCard 
-                  title="Paletes no Stage-Out" value={expedicaoData.kpis.paletesProntos} unit="pl" 
-                  icon={LayoutGrid} trend="up" trendValue="Aguardar carregamento" theme="amber" 
-                />
-                <KpiCard 
-                  title="Paletes Carregados (Dia)" value={expedicaoData.kpis.paletesCarregados} unit="pl" 
-                  icon={Package} trend="up" trendValue="+15% vs ontem" theme="green" 
-                />
-                <KpiCard 
-                  title="Veículos nas Docas" value={expedicaoData.kpis.veiculosDoca} unit="veículos" 
-                  icon={DoorOpen} trend="none" trendValue="2 aguardar pátio" theme="blue" 
-                />
-                <KpiCard 
-                  title="Veículos Expedidos" value={expedicaoData.kpis.veiculosExpedidos} unit="viagens" 
-                  icon={Truck} trend="up" trendValue="Fluxo dentro da meta" theme="indigo" 
-                />
-              </div>
-
-              {/* Visões Operacionais (Stage-Out e Docas) */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                
-                {/* Ocupação de Stage-Out */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col">
-                  <div className="flex justify-between items-center mb-6">
-                    <div>
-                      <h3 className="font-bold text-slate-800">Ocupação do Stage-Out (Pulmão)</h3>
-                      <p className="text-sm text-slate-500">Paletes consolidados prontos para embarque.</p>
-                    </div>
-                    <button className="text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors">
-                      Ver Mapa Completo
-                    </button>
-                  </div>
-                  
-                  <div className="flex-1 flex flex-col gap-5 justify-center">
-                    {expedicaoData.stageOut.map((stage, idx) => (
-                      <div key={idx} className="flex flex-col gap-2">
-                        <div className="flex justify-between items-end">
-                          <span className="text-sm font-bold text-slate-700">{stage.id}</span>
-                          <span className="text-sm font-bold text-slate-800">{stage.paletes} paletes</span>
-                        </div>
-                        <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full transition-all duration-1000 ${stage.color}`} 
-                            style={{ width: `${stage.ocupacao}%` }}
-                          ></div>
-                        </div>
-                        <div className="flex justify-between text-[10px] text-slate-500 font-medium uppercase tracking-wider">
-                          <span className={stage.ocupacao >= 90 ? 'text-red-500 font-bold' : ''}>{stage.status}</span>
-                          <span>{stage.ocupacao}% capacidade</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Status das Docas */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col">
-                  <div className="flex justify-between items-center mb-6">
-                    <div>
-                      <h3 className="font-bold text-slate-800">Painel de Carregamento (Docas)</h3>
-                      <p className="text-sm text-slate-500">Status em tempo real das portas de expedição.</p>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    {expedicaoData.docas.map((doca, idx) => (
-                      <div key={idx} className={`p-4 rounded-lg border ${doca.status === 'Livre' ? 'border-dashed border-slate-300 bg-slate-50 opacity-70' : 'border-slate-200 bg-white shadow-sm'}`}>
-                        <div className="flex justify-between items-center mb-3">
-                          <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                            <DoorOpen size={16} className={doca.status === 'Livre' ? 'text-slate-400' : 'text-blue-600'} />
-                            {doca.id}
-                          </span>
-                          <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
-                            doca.status === 'A Carregar' ? 'bg-blue-100 text-blue-700' : 
-                            doca.status === 'Pronto a Sair' ? 'bg-emerald-100 text-emerald-700' : 
-                            doca.status === 'A Iniciar' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-500'
-                          }`}>
-                            {doca.status}
-                          </span>
+            {/* Modais da Visão Geral */}
+            {activeModal && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-in fade-in" onClick={closeModal}>
+                    <div className="bg-white rounded-[2rem] p-8 max-w-4xl w-full shadow-2xl flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-2xl font-extrabold text-slate-800 uppercase tracking-tight">Detalhes Operacionais</h3>
+                            <button onClick={closeModal} className="text-slate-400 hover:text-slate-800"><X size={24}/></button>
                         </div>
                         
-                        {doca.status !== 'Livre' ? (
-                          <>
-                            <div className="mb-3">
-                              <p className="text-xs font-semibold text-slate-700 truncate">{doca.veiculo} ({doca.placa})</p>
-                              <p className="text-[10px] text-slate-500 truncate">Destino: {doca.rota}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                                <div className={`h-full rounded-full ${doca.progresso === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{ width: `${doca.progresso}%` }}></div>
-                              </div>
-                              <span className="text-xs font-bold text-slate-700">{doca.progresso}%</span>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center py-2">
-                            <span className="text-xs font-medium text-slate-400">Doca Disponível</span>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                        <div className="flex-grow overflow-y-auto custom-scrollbar border rounded-2xl">
+                            <table className="w-full text-left border-collapse text-sm">
+                                <thead className="bg-slate-50 sticky top-0 border-b">
+                                    <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        <th className="px-6 py-4">Veículo</th>
+                                        <th className="px-6 py-4">Destino / Origem</th>
+                                        <th className="px-6 py-4">Horário / Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {activeModal === 'fleet' && doeAllVehicles.map((v, i) => (
+                                        <tr key={i} className="hover:bg-slate-50">
+                                            <td className="px-6 py-4 font-black text-slate-800">{v.placa} <span className="text-xs text-slate-400 block font-medium">{v.tipo} ({v.capacidade} PL)</span></td>
+                                            <td className="px-6 py-4 font-bold text-slate-600">{v.destino}</td>
+                                            <td className="px-6 py-4">{v.viagemAberta ? <span className="text-blue-600 bg-blue-50 px-3 py-1 rounded-lg text-[10px] font-bold">EM USO ({v.carregamento})</span> : <span className="text-emerald-500 bg-emerald-50 px-3 py-1 rounded-lg text-[10px] font-bold">DISPONÍVEL</span>}</td>
+                                        </tr>
+                                    ))}
+                                    {activeModal === 'details-status' && detailsType && doeEtapaData[detailsType]?.vehicles.map((v, i) => (
+                                        <tr key={i} className="hover:bg-slate-50">
+                                            <td className="px-6 py-4 font-black text-slate-800">{v.placa} <span className="text-xs text-slate-400 block font-medium">{v.motorista}</span></td>
+                                            <td className="px-6 py-4 font-bold text-slate-600">{v.origem} &rarr; {v.destino}</td>
+                                            <td className="px-6 py-4 font-medium text-amber-600">Saída: {v.saidaCd} <span className="text-xs ml-2 bg-amber-50 px-2 py-0.5 rounded">Tempo: {calcularTempoDecorrido(v.saidaCd)}</span></td>
+                                        </tr>
+                                    ))}
+                                    {(activeModal === 'compliance' || activeModal === 'waiting' || activeModal === 'risk') && (
+                                        <tr><td colSpan="3" className="p-8 text-center text-slate-400">Listagem detalhada disponível no sistema de relatórios.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-              </div>
-
-              {/* Tabela de Veículos Expedidos/Carregados */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-                  <div>
-                    <h3 className="font-bold text-slate-800">Registo de Saídas (Veículos Carregados)</h3>
-                    <p className="text-sm text-slate-500">Acompanhamento de rotas concluídas e documentação (NFe/CTe).</p>
-                  </div>
-                  <button className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded shadow-sm transition-colors flex items-center gap-2">
-                    <FileText size={14} /> Emitir Manifestos
-                  </button>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-white border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
-                        <th className="px-6 py-4 font-semibold">Loja / Destino</th>
-                        <th className="px-6 py-4 font-semibold">Veículo</th>
-                        <th className="px-6 py-4 font-semibold text-center">Volume (Paletes)</th>
-                        <th className="px-6 py-4 font-semibold">Hora de Conclusão</th>
-                        <th className="px-6 py-4 font-semibold text-right">Status da Viagem</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-sm text-slate-700 divide-y divide-slate-100">
-                      {expedicaoData.veiculosCarregados.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-6 py-4 font-bold text-slate-800">{row.loja}</td>
-                          <td className="px-6 py-4 text-slate-600 flex items-center gap-2">
-                            <Truck size={14} className="text-slate-400" /> {row.veiculo}
-                          </td>
-                          <td className="px-6 py-4 font-bold text-slate-800 text-center">{row.paletes}</td>
-                          <td className="px-6 py-4 font-medium text-slate-600">{row.hora}</td>
-                          <td className="px-6 py-4 text-right">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-bold border ${row.statusColor}`}>
-                              {row.status === 'Aguardar NFe' && <Clock size={12} className="mr-1.5" />}
-                              {row.status === 'Em Trânsito' && <Truck size={12} className="mr-1.5" />}
-                              {row.status === 'Liberado Portaria' && <CheckCircle size={12} className="mr-1.5" />}
-                              {row.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-            </div>
-          )}
-
-          {/* --- PLACEHOLDER PARA OUTROS MENUS --- */}
-          {activeMenu !== 'dashboard' && activeMenu !== 'recebimento' && activeMenu !== 'separacao' && activeMenu !== 'equipe' && activeMenu !== 'inventario' && activeMenu !== 'expedicao' && (
-            <div className="flex flex-col items-center justify-center h-full text-slate-400 animate-in fade-in duration-500">
-              <LayoutDashboard size={48} className="mb-4 opacity-50" />
-              <h3 className="text-xl font-bold text-slate-600 mb-2">Módulo em Desenvolvimento</h3>
-              <p className="text-sm text-center max-w-md">
-                Esta visão gerencial para a aba <strong>"{menuItems.find(item => item.id === activeMenu)?.label}"</strong> está sendo construída.
-              </p>
-            </div>
-          )}
-
+            )}
         </div>
-      </main>
-    </div>
-  );
+    );
+};
+
+const lteVehiclesData = {
+    'K-54321': { placa: 'KSA-4321', lojas: [1, 2, 5], tripNumber: '00123', type: 'Compartilhada', status: 'EM_VIAGEM', tempoTotal: '2h 45m', steps: [
+        { id: '1-k', name: '1. Registro de Lacre', icon: 'Lock', status: 'done', time: '23/02 08:00', inc: '0 min', storeId: null, typeLabel: 'CD', details: { usuario: 'João Silva', loja: '99-CD Central', qtdePaletes: '25', lacres: ['SEAL00123', 'SEAL00124'] } },
+        { id: '2-k', name: '2. Saída para entrega', icon: 'Truck', status: 'done', time: '23/02 08:15', inc: '15 min', storeId: null, typeLabel: 'CD' },
+        { id: '3-k-5', name: '3. Chegada na Loja 5', icon: 'Store', status: 'done', time: '23/02 09:30', inc: '+1h 15m', storeId: 5, typeLabel: 'LOJA' },
+        { id: '4-k-5', name: '4. Validação de paletes', icon: 'Box', status: 'done', time: '23/02 09:55', inc: '+1h 40m', storeId: 5, typeLabel: 'LOJA', details: { usuario: 'Marta Souza', loja: 'Loja 5 - Sul', qtdePaletes: '8', paletes: ['Etq: 123 - Lote 1', 'Etq: 124 - Lote 1', 'Etq: 125 - Lote 2'] } },
+        { id: '5-k-5', name: '5. Saída da Loja 5', icon: 'LockOpen', status: 'active', time: '23/02 10:10', inc: '+1h 55m', storeId: 5, typeLabel: 'LOJA' },
+        { id: '6-k-1', name: '6. Chegada na Loja 1', icon: 'Store', status: 'pending', time: '23/02 10:45', inc: 'Previsto', storeId: 1, typeLabel: 'LOJA' }
+    ]},
+    'M-11223': { placa: 'ABC-1D23', lojas: [8], tripNumber: '00125', type: 'Dedicada', status: 'FINALIZADA', tempoTotal: '3h 40m', steps: [
+        { id: '1-m', name: '1. Registro de Lacre', icon: 'Lock', status: 'done', time: '23/02 06:00', inc: '0 min', storeId: null, typeLabel: 'CD' },
+        { id: '2-m', name: '2. Saída para entrega', icon: 'Truck', status: 'done', time: '23/02 06:15', inc: '15 min', storeId: null, typeLabel: 'CD' },
+        { id: '3-m-8', name: '3. Chegada na Loja 8', icon: 'Store', status: 'done', time: '23/02 07:20', inc: '+1h 20m', storeId: 8, typeLabel: 'LOJA' },
+        { id: '4-m-8', name: '4. Validação de paletes', icon: 'Box', status: 'done', time: '23/02 07:50', inc: '+1h 50m', storeId: 8, typeLabel: 'LOJA', details: { usuario: 'Pedro Costa', loja: 'Loja 8 - Norte', qtdePaletes: '4', paletes: ['Etq: 801 - Lote 1', 'Etq: 802 - Lote 1'] } },
+        { id: '5-m', name: '5. Retorno ao CD', icon: 'Warehouse', status: 'done', time: '23/02 09:40', inc: '+3h 40m', storeId: null, typeLabel: 'CD' }
+    ]}
+};
+
+const StatusEntregas = () => {
+    const [sideNavOpen, setSideNavOpen] = useState(false);
+    const [filters, setFilters] = useState({ vehicle: 'ALL', store: 'ALL', status: 'ALL' });
+    const [activeStepModal, setActiveStepModal] = useState(null);
+
+    const getStoreColor = (storeId) => {
+        if (!storeId) return 'bg-slate-100 text-slate-600';
+        const colors = ['bg-fuchsia-100 text-fuchsia-700', 'bg-purple-100 text-purple-700', 'bg-pink-100 text-pink-700', 'bg-rose-100 text-rose-700', 'bg-orange-100 text-orange-700', 'bg-indigo-100 text-indigo-700', 'bg-cyan-100 text-cyan-700'];
+        return colors[storeId % colors.length];
+    };
+
+    const renderIcon = (iconName, status) => {
+        const props = { size: 20, className: status === 'active' ? 'animate-pulse' : '', color: status === 'done' ? '#10B981' : (status === 'active' ? '#F59E0B' : '#9CA3AF') };
+        switch(iconName) {
+            case 'Lock': return <Lock {...props} />;
+            case 'Truck': return <Truck {...props} />;
+            case 'Store': return <Store {...props} />;
+            case 'Box': return <Box {...props} />;
+            case 'LockOpen': return <LockOpen {...props} />;
+            case 'Warehouse': return <Warehouse {...props} />;
+            default: return <CheckCircle {...props} />;
+        }
+    };
+
+    const filteredVehicles = Object.keys(lteVehiclesData).filter(id => {
+        const v = lteVehiclesData[id];
+        const mVehicle = filters.vehicle === 'ALL' || filters.vehicle === id;
+        const mStatus = filters.status === 'ALL' || filters.status === v.status;
+        return mVehicle && mStatus;
+    });
+
+    const openStep = (vId, stepId) => {
+        const v = lteVehiclesData[vId];
+        const step = v.steps.find(s => s.id === stepId);
+        setActiveStepModal({ vehicle: v, step });
+    };
+
+    return (
+        <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 p-6 md:p-10 animate-in fade-in duration-500 relative overflow-hidden">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 border-b border-slate-50 pb-6 gap-4">
+                <h1 className="text-2xl font-black text-slate-800 tracking-tighter uppercase flex items-center gap-3">
+                    <div className="w-2 h-8 bg-blue-600 rounded-full"></div>
+                    Linha do Tempo de Entregas
+                </h1>
+                <button onClick={() => setSideNavOpen(true)} className="flex items-center gap-2 px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl transition-all">
+                    <Filter size={18} />
+                    <span className="text-xs uppercase tracking-widest">Filtro</span>
+                </button>
+            </div>
+
+            <div className="space-y-12 pb-12 overflow-x-auto">
+                {filteredVehicles.map(vId => {
+                    const data = lteVehiclesData[vId];
+                    const sColor = data.status === 'EM_VIAGEM' ? 'text-amber-600' : (data.status === 'FINALIZADA' ? 'text-emerald-600' : 'text-slate-500');
+                    return (
+                        <div key={vId} className="border-b border-slate-100 pb-10 last:border-0 last:pb-0">
+                            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-8 px-2 text-[13px]">
+                                <div><span className="font-extrabold text-slate-800 mr-1">Viagem:</span> <span className="font-bold text-slate-500">{data.tripNumber}</span></div>
+                                <div className="h-4 w-px bg-slate-200 hidden md:block"></div>
+                                <div><span className="font-extrabold text-slate-800 mr-1">Veículo:</span> <span className="font-bold text-slate-500">{data.placa}</span></div>
+                                <div className="h-4 w-px bg-slate-200 hidden md:block"></div>
+                                <div><span className="font-extrabold text-slate-800 mr-1">Status:</span> <span className={`font-bold ${sColor}`}>{data.status.replace('_', ' ')}</span></div>
+                            </div>
+                            
+                            <div className="relative flex items-start gap-4 custom-scrollbar pb-4" style={{ minWidth: `${data.steps.length * 180}px`}}>
+                                <div className="absolute top-[24px] left-[45px] right-[45px] h-0.5 bg-slate-200 z-0"></div>
+                                {data.steps.map(step => (
+                                    <div key={step.id} onClick={() => openStep(vId, step.id)} className="flex flex-col items-center min-w-[160px] cursor-pointer hover:-translate-y-1 transition-transform z-10">
+                                        <div className={`w-12 h-12 rounded-full border-2 bg-white flex items-center justify-center mb-4 ${step.status === 'done' ? 'border-emerald-500' : (step.status === 'active' ? 'border-amber-500' : 'border-slate-300')}`}>
+                                            {renderIcon(step.icon, step.status)}
+                                        </div>
+                                        <div className={`w-[160px] min-h-[150px] rounded-2xl p-3 flex flex-col justify-between items-center text-center shadow-sm border ${step.status === 'done' ? 'bg-[#E6F4F1] border-[#D1E9E4]' : (step.status === 'active' ? 'bg-[#FFF9E6] border-[#FFEBB3]' : 'bg-slate-50 border-slate-200')}`}>
+                                            <div className="flex flex-col items-center">
+                                                <span className={`px-2 py-0.5 rounded text-[9px] font-black tracking-widest uppercase mb-2 ${getStoreColor(step.storeId)}`}>
+                                                    {step.typeLabel} {step.storeId ? step.storeId : ''}
+                                                </span>
+                                                <p className="text-[11px] font-bold leading-tight uppercase text-slate-800">{step.name}</p>
+                                            </div>
+                                            <div className="w-full mt-3 flex flex-col items-center gap-1.5">
+                                                <div className={`flex items-center justify-center w-full rounded-md py-1.5 border ${step.status === 'pending' ? 'bg-slate-200/50 text-slate-500 border-transparent' : 'bg-white/60 text-slate-800 border-white/40'}`}>
+                                                    <Clock size={12} className="mr-1 opacity-60" />
+                                                    <span className="text-[10px] font-bold">{step.time}</span>
+                                                </div>
+                                                <span className={`text-[9px] font-black tracking-widest uppercase ${step.status === 'done' ? 'text-[#108E72]' : (step.status === 'active' ? 'text-[#B38600]' : 'text-slate-400')}`}>{step.inc}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Modal de Detalhes LTE */}
+            {activeStepModal && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-in fade-in" onClick={() => setActiveStepModal(null)}>
+                    <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden p-8" onClick={e => e.stopPropagation()}>
+                        <h2 className="text-2xl font-black text-blue-600 mb-8 tracking-tighter uppercase">{activeStepModal.step.name}</h2>
+                        
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Usuário</p>
+                                <p className="text-xs font-black text-slate-700">{activeStepModal.step.details?.usuario || '--'}</p>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Data/Hora</p>
+                                <p className="text-xs font-black text-slate-700">{activeStepModal.step.time}</p>
+                            </div>
+                        </div>
+
+                        {activeStepModal.step.name.toLowerCase().includes('valida') && (
+                            <div className="border border-emerald-100 rounded-[20px] p-5 mb-6 bg-emerald-50/30 max-h-[220px] overflow-y-auto">
+                                <p className="text-[10px] font-black text-emerald-600 uppercase mb-3">Paletes Validados ({activeStepModal.step.details?.qtdePaletes || 0})</p>
+                                <div className="space-y-2">
+                                    {activeStepModal.step.details?.paletes?.map((p, i) => (
+                                        <div key={i} className="flex items-center gap-3 p-2 bg-emerald-50 border border-emerald-100 rounded-lg">
+                                            <CheckCircle size={14} className="text-emerald-600" />
+                                            <span className="text-xs font-bold text-emerald-700">{p}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <button onClick={() => setActiveStepModal(null)} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl mt-4 uppercase text-sm">
+                            Fechar Detalhes
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* SideNav de Filtros */}
+            <div className={`fixed top-0 right-0 h-full w-80 bg-white shadow-2xl transition-transform duration-300 z-[200] flex flex-col ${sideNavOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                    <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest">Painel de Filtros</h2>
+                    <button onClick={() => setSideNavOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-900" /></button>
+                </div>
+                <div className="p-8 space-y-6 flex-1">
+                    <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Veículo</label>
+                        <select value={filters.vehicle} onChange={e => setFilters({...filters, vehicle: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none">
+                            <option value="ALL">TODOS OS VEÍCULOS</option>
+                            <option value="K-54321">KSA-4321</option>
+                            <option value="M-11223">ABC-1D23</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Status</label>
+                        <select value={filters.status} onChange={e => setFilters({...filters, status: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none">
+                            <option value="ALL">TODOS OS STATUS</option>
+                            <option value="EM_VIAGEM">EM VIAGEM</option>
+                            <option value="FINALIZADA">FINALIZADA</option>
+                        </select>
+                    </div>
+                </div>
+                <div className="p-6 border-t border-slate-100">
+                    <button onClick={() => setSideNavOpen(false)} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl uppercase text-sm hover:bg-blue-700">Aplicar Filtros</button>
+                </div>
+            </div>
+            {sideNavOpen && <div className="fixed inset-0 bg-slate-900/40 z-[190]" onClick={() => setSideNavOpen(false)}></div>}
+        </div>
+    );
+};
+
+const poqDataDetails = {
+    'qual_non_compliance': [
+        { id: 'V2024-001', store: 'Loja 01 (LAPA)', vehicle: 'ABC-1234', problem: 'PALETE', driver: 'João Silva', date: '22/10', color: 'amber' },
+        { id: 'V2024-042', store: 'Loja 05 (CENTRO)', vehicle: 'XYZ-9876', problem: 'LACRE', driver: 'Ricardo Costa', date: '22/10', color: 'blue' }
+    ],
+    'qual_seal_failure': [{ id: 'V2024-042', store: 'Loja 05', vehicle: 'XYZ-9876', problem: 'LACRE', driver: 'Ricardo Costa', date: '22/10', color: 'blue' }],
+    'qual_pallet_divergence': [{ id: 'V2024-001', store: 'Loja 01', vehicle: 'ABC-1234', problem: 'PALETE', driver: 'João Silva', date: '22/10', color: 'amber' }],
+    'qual_support_material': [{ id: 'V2024-089', store: 'Loja 12', vehicle: 'MNO-4567', problem: 'MAT. APOIO', driver: 'Marcos Oliveira', date: '21/10', color: 'indigo' }]
+};
+
+const PainelOcorrencias = () => {
+    const [activeModal, setActiveModal] = useState(null);
+    const [chatActive, setChatActive] = useState(false);
+    const [chatMessages, setChatMessages] = useState([
+        { id: 1, sender: 'bot', text: 'Olá! Sou o LogiAssistant. A Matriz de Risco confirma que Lapa (01) e Norte (12) são críticas. Posso ajudar com mais detalhes?' }
+    ]);
+    const [inputValue, setInputValue] = useState('');
+
+    const handleSendMessage = () => {
+        if (!inputValue.trim()) return;
+        setChatMessages(prev => [...prev, { id: Date.now(), sender: 'user', text: inputValue }]);
+        setInputValue('');
+        
+        const typingId = Date.now() + 1;
+        setChatMessages(prev => [...prev, { id: typingId, sender: 'bot', isTyping: true }]);
+        
+        setTimeout(() => {
+            setChatMessages(prev => prev.filter(m => m.id !== typingId));
+            setChatMessages(prev => [...prev, { id: Date.now() + 2, sender: 'bot', text: 'De acordo com os dados, Ricardo Souza e Ana Paula estão associados à maioria dos erros de paletes. Sugiro verificar a doca 4.' }]);
+        }, 1500);
+    };
+
+    const renderModal = () => {
+        if (!activeModal) return null;
+        const isTable = activeModal === 'qual_total_problems';
+        return (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-in fade-in" onClick={() => setActiveModal(null)}>
+                <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full p-6" onClick={e => e.stopPropagation()}>
+                    <div className="flex justify-between items-center mb-6 pb-4 border-b">
+                        <h3 className="text-xl font-bold text-gray-800 uppercase tracking-tight">Detalhes de Ocorrências</h3>
+                        <button onClick={() => setActiveModal(null)}><X className="text-gray-400" /></button>
+                    </div>
+                    <div className="overflow-x-auto border border-gray-200 rounded-xl max-h-[60vh] custom-scrollbar">
+                        {isTable ? (
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-gray-50 border-b text-[10px] font-bold text-gray-400 uppercase">
+                                    <tr><th className="p-4">Loja</th><th className="p-4">Entregas</th><th className="p-4 text-red-600">Problemas</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr className="border-b"><td className="p-4 font-bold">Loja 01 (LAPA)</td><td className="p-4">450</td><td className="p-4 text-red-600 font-bold">85</td></tr>
+                                    <tr className="border-b"><td className="p-4 font-bold">Loja 05 (CENTRO)</td><td className="p-4">380</td><td className="p-4 text-red-600 font-bold">65</td></tr>
+                                </tbody>
+                            </table>
+                        ) : (
+                            <table className="w-full text-left text-xs">
+                                <thead className="bg-gray-50 border-b text-[10px] font-bold text-gray-400 uppercase">
+                                    <tr><th className="p-4">Viagem</th><th className="p-4">Loja</th><th className="p-4">Veículo</th><th className="p-4">Problema</th></tr>
+                                </thead>
+                                <tbody>
+                                    {(poqDataDetails[activeModal] || []).map((i, idx) => (
+                                        <tr key={idx} className="border-b">
+                                            <td className="p-4 font-bold text-blue-600">{i.id}</td><td className="p-4">{i.store}</td>
+                                            <td className="p-4 font-mono">{i.vehicle}</td>
+                                            <td className="p-4"><span className={`px-2 py-0.5 bg-${i.color}-100 text-${i.color}-700 rounded font-bold`}>{i.problem}</span></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+            <style>{`
+                .pie-slice-custom { background: conic-gradient(#2563eb 0% 23%, #f59e0b 23% 85%, #4f46e5 85% 100%); }
+                .scatter-bubble:hover .scatter-tooltip { visibility: visible; opacity: 1; }
+                .v-bar-container { height: 200px; display: flex; align-items: flex-end; justify-content: space-around; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+                .v-bar { width: 40px; border-radius: 6px 6px 0 0; position: relative; transition: all 0.5s ease; }
+                .v-bar:hover { filter: brightness(1.1); transform: scaleX(1.1); }
+            `}</style>
+            
+            <header>
+                <h2 className="text-3xl font-bold text-gray-800 tracking-tight">Painel de Ocorrências e Qualidade de Entrega</h2>
+                <p className="text-gray-500 mt-1 text-sm">Análise de divergências reportadas pelas lojas e resoluções do CD.</p>
+            </header>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-xl shadow-md border-b-4 border-red-600 cursor-pointer" onClick={() => setActiveModal('qual_non_compliance')}>
+                    <p className="text-base font-medium text-gray-500 mb-1">Entregas com Ocorrências</p>
+                    <p className="text-6xl font-extrabold text-gray-900">4.5%</p>
+                    <p className="text-xs mt-4 text-red-600 font-bold">115 Ocorrências / 2.555 Entregas</p>
+                </div>
+                <div className="bg-white p-6 rounded-xl shadow-md border-b-4 border-green-600 cursor-pointer" onClick={() => setActiveModal('qual_total_problems')}>
+                    <p className="text-base font-medium text-gray-500 mb-1">Lojas com Ocorrências</p>
+                    <p className="text-6xl font-extrabold text-gray-900">26.7%</p>
+                    <p className="text-xs mt-4 text-green-600 font-bold">12 Lojas com problemas / 45 Total</p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+                <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 flex flex-col">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-8 flex items-center gap-2">
+                        <Activity className="text-blue-600" size={20} /> Ocorrências por Problemas
+                    </h3>
+                    <div className="flex-1 flex items-center justify-around">
+                        <div className="w-44 h-44 rounded-full pie-slice-custom shadow-inner flex items-center justify-center"><div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-lg font-bold text-2xl">135</div></div>
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2"><div className="w-3 h-3 bg-amber-500 rounded-sm"></div><span className="text-xs font-bold">Paletes (62%)</span></div>
+                            <div className="flex items-center gap-2"><div className="w-3 h-3 bg-blue-600 rounded-sm"></div><span className="text-xs font-bold">Lacres (23%)</span></div>
+                            <div className="flex items-center gap-2"><div className="w-3 h-3 bg-indigo-600 rounded-sm"></div><span className="text-xs font-bold">Apoio (15%)</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 relative h-[380px]">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
+                        <Map className="text-indigo-600" size={20}/> Matriz de Impacto (Tempo x Frequência)
+                    </h3>
+                    <div className="absolute inset-x-8 bottom-8 top-20 border-l-2 border-b-2 border-gray-300 bg-slate-50/50">
+                        {/* Simulação Scatter Plot */}
+                        <div className="absolute rounded-full bg-red-500 shadow-lg flex items-center justify-center hover:scale-110 transition-transform scatter-bubble z-50 text-white font-bold text-[11px]" style={{left: '70%', bottom: '70%', width: '60px', height: '60px'}}>Loja 01
+                            <div className="scatter-tooltip absolute bottom-full mb-2 bg-gray-800 text-white p-2 rounded w-40 text-[10px] invisible opacity-0 text-center pointer-events-none">Crítico: Alta Frequência</div>
+                        </div>
+                        <div className="absolute rounded-full bg-orange-500 shadow-lg flex items-center justify-center hover:scale-110 transition-transform scatter-bubble z-40 text-white font-bold text-[10px]" style={{left: '50%', bottom: '50%', width: '50px', height: '50px'}}>Loja 12</div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-white p-8 rounded-xl shadow-md border border-gray-100">
+                <h3 className="text-lg font-bold text-gray-800 mb-8 flex items-center gap-2"><Users className="text-amber-600"/> Ranking de Operadores (Problemas Paletes)</h3>
+                <div className="v-bar-container px-10">
+                    <div className="flex flex-col items-center w-20"><div className="v-bar bg-amber-600" style={{height: '160px'}}><span className="v-label-value">32</span></div><span className="mt-2 text-[10px] font-bold text-center">Ricardo S.</span></div>
+                    <div className="flex flex-col items-center w-20"><div className="v-bar bg-amber-500" style={{height: '120px'}}><span className="v-label-value">24</span></div><span className="mt-2 text-[10px] font-bold text-center">Ana P.</span></div>
+                    <div className="flex flex-col items-center w-20"><div className="v-bar bg-amber-400" style={{height: '90px'}}><span className="v-label-value">18</span></div><span className="mt-2 text-[10px] font-bold text-center">Luiz F.</span></div>
+                </div>
+                <div className="mt-8 p-4 bg-blue-50 rounded-xl flex items-center gap-3 border border-blue-100 text-sm text-blue-900">
+                    <Sparkles className="text-blue-600" />
+                    <strong>LogiAssistant:</strong> Padrão de erros detetado no Turno B. Sugerimos auditoria em tempo real na doca 4.
+                </div>
+            </div>
+
+            {/* Chatbot Button & Container */}
+            <button onClick={() => setChatActive(!chatActive)} className="fixed bottom-6 right-6 w-16 h-16 bg-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-blue-700 transition-transform hover:scale-110 z-50">
+                <Bot size={28} />
+                <span className="absolute -top-1 -right-1 bg-red-500 text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-bounce">AI</span>
+            </button>
+
+            <div className={`fixed bottom-24 right-6 w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 flex flex-col overflow-hidden max-h-[500px] transition-all duration-300 ${chatActive ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
+                <div className="p-4 bg-slate-900 text-white flex justify-between items-center">
+                    <div className="flex items-center gap-2"><Sparkles size={18} className="text-blue-400"/><span className="font-bold text-sm">LogiAssistant</span></div>
+                    <button onClick={() => setChatActive(false)}><X size={18}/></button>
+                </div>
+                <div className="flex-1 p-4 overflow-y-auto bg-slate-50 space-y-4 min-h-[300px]">
+                    {chatMessages.map(m => (
+                        <div key={m.id} className={`flex gap-2 ${m.sender === 'user' ? 'flex-row-reverse' : ''}`}>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${m.sender === 'user' ? 'bg-slate-200' : 'bg-blue-100'}`}>{m.sender === 'user' ? <Users size={14}/> : <Bot size={14} className="text-blue-600"/>}</div>
+                            <div className={`p-3 rounded-2xl text-sm max-w-[85%] shadow-sm ${m.sender === 'user' ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white border rounded-tl-none'}`}>
+                                {m.isTyping ? <span className="animate-pulse">A processar...</span> : m.text}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <div className="p-3 border-t bg-white flex">
+                    <input type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleSendMessage()} placeholder="Pergunte ao assistente..." className="flex-1 bg-gray-100 rounded-lg px-3 py-2 text-sm outline-none" />
+                    <button onClick={handleSendMessage} className="ml-2 p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><Send size={18}/></button>
+                </div>
+            </div>
+
+            {renderModal()}
+        </div>
+    );
+};
+
+const meoVehicles = [
+    { plate: 'LPT9J76', trip: '00124', statusLabel: 'Em Trânsito (CD -> Loja)', badge: 'Em Trânsito para L10', dest: 'Loja 10', time: '23/02 08:45' },
+    { plate: 'KLT8H12', trip: '00136', statusLabel: 'Em Trânsito (Loja > Loja)', badge: 'Em Trânsito (Loja > Loja)', dest: 'L5 -> L12', time: '23/02 09:15' },
+    { plate: 'BRA1E22', trip: '00123', statusLabel: 'Em Validação', badge: 'Em Validação Palete L5', dest: 'Loja 05', time: '23/02 09:55' },
+    { plate: 'MCE1D23', trip: '00125', statusLabel: 'Aguardando Validação', badge: 'Aguardando Validação L18', dest: 'Loja 18', time: '23/02 10:15' },
+    { plate: 'ABC4D55', trip: '00140', statusLabel: 'Em Trânsito (CD -> Loja)', badge: 'Em Trânsito para L22', dest: 'Loja 22', time: '23/02 10:30' },
+    { plate: 'XYZ7W10', trip: '00141', statusLabel: 'Em Trânsito (Loja > Loja)', badge: 'Em Trânsito (Loja > Loja)', dest: 'L10 -> L18', time: '23/02 10:50' },
+    { plate: 'PFT4B56', trip: '00126', statusLabel: 'Retornando ao CD', badge: 'Retornando ao CD', dest: 'Finalizada', time: '23/02 11:15' },
+    { plate: 'RSL2C34', trip: '00127', statusLabel: 'Aguardando Saída', badge: 'Aguardando Saída L22', dest: 'Loja 22', time: '23/02 11:30' },
+    { plate: 'STR9F01', trip: '00128', statusLabel: 'Em Trânsito (CD -> Loja)', badge: 'Em Trânsito para L02', dest: 'Loja 02', time: '23/02 12:00' },
+    { plate: 'MCE7G88', trip: '00129', statusLabel: 'Em Validação', badge: 'Em Validação Palete L12', dest: 'Loja 12', time: '23/02 12:15' },
+    { plate: 'TRK1X55', trip: '00131', statusLabel: 'Aguardando Validação', badge: 'Aguardando Validação L30', dest: 'Loja 30', time: '23/02 12:45' },
+    { plate: 'PLM8Z11', trip: '00132', statusLabel: 'Em Validação', badge: 'Em Validação Palete L08', dest: 'Loja 08', time: '23/02 13:10' }
+];
+
+const getMeoTheme = (status) => {
+    switch(status) {
+        case 'Em Trânsito (CD -> Loja)': return { plate: 'text-slate-800', trip: 'bg-indigo-50 text-indigo-600 border-indigo-100', badge: 'bg-blue-100 text-blue-700' };
+        case 'Em Trânsito (Loja > Loja)': return { plate: 'text-cyan-800', trip: 'bg-cyan-50 text-cyan-600 border-cyan-100', badge: 'bg-cyan-100 text-cyan-700' };
+        case 'Em Validação': return { plate: 'text-slate-800', trip: 'bg-blue-50 text-blue-600 border-blue-100', badge: 'bg-amber-100 text-amber-700' };
+        case 'Aguardando Validação': return { plate: 'text-slate-800', trip: 'bg-rose-50 text-rose-600 border-rose-100', badge: 'bg-rose-100 text-rose-700' };
+        case 'Retornando ao CD': return { plate: 'text-slate-800', trip: 'bg-emerald-50 text-emerald-600 border-emerald-100', badge: 'bg-emerald-100 text-emerald-700' };
+        case 'Aguardando Saída': return { plate: 'text-slate-800', trip: 'bg-indigo-50 text-indigo-700 border-indigo-100', badge: 'bg-indigo-100 text-indigo-700' };
+        default: return { plate: 'text-slate-800', trip: 'bg-slate-50 text-slate-600 border-slate-100', badge: 'bg-slate-100 text-slate-700' };
+    }
+};
+
+const MonitoramentoOnline = () => {
+    const [dateFilter, setDateFilter] = useState('2026-02-23');
+    const [statusFilter, setStatusFilter] = useState('TODAS');
+    const [vehicleFilter, setVehicleFilter] = useState('TODOS');
+    const [selectedVehicle, setSelectedVehicle] = useState(null);
+
+    const filteredVehicles = meoVehicles.filter(v => {
+        const matchStatus = statusFilter === 'TODAS' || v.statusLabel === statusFilter;
+        const matchVehicle = vehicleFilter === 'TODOS' || v.plate === vehicleFilter;
+        return matchStatus && matchVehicle;
+    });
+
+    return (
+        <div className="space-y-8 animate-in fade-in duration-500 pb-12 text-left">
+            <header>
+                <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight">Monitoramento Online</h2>
+                <p className="text-slate-500 font-medium mt-1">Acompanhamento detalhado de cada veículo em tempo real.</p>
+            </header>
+
+            <div className="bg-white p-6 rounded-2xl shadow-md border border-slate-100 grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Data:</label>
+                    <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none" />
+                </div>
+                <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Filtrar por Etapa:</label>
+                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm font-semibold focus:outline-none cursor-pointer">
+                        <option value="TODAS">TODAS as Etapas</option>
+                        <option value="Em Trânsito (CD -> Loja)">Em Trânsito (CD -{'>'} Loja)</option>
+                        <option value="Em Trânsito (Loja > Loja)">Em Trânsito (Loja {'>'} Loja)</option>
+                        <option value="Aguardando Validação">Aguardando Validação</option>
+                        <option value="Em Validação">Em Validação</option>
+                        <option value="Aguardando Saída">Aguardando Saída</option>
+                        <option value="Retornando ao CD">Retornando ao CD</option>
+                    </select>
+                </div>
+                <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Buscar Veículo:</label>
+                    <select value={vehicleFilter} onChange={e => setVehicleFilter(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm font-semibold focus:outline-none cursor-pointer">
+                        <option value="TODOS">TODOS</option>
+                        {meoVehicles.map(v => <option key={v.plate} value={v.plate}>{v.plate}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Unidade/Loja:</label>
+                    <select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm font-semibold focus:outline-none cursor-pointer">
+                        <option>TODAS</option>
+                    </select>
+                </div>
+            </div>
+
+            <div className="bg-white p-8 rounded-[2.5rem] shadow-md border border-slate-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {filteredVehicles.map(v => {
+                        const theme = getMeoTheme(v.statusLabel);
+                        return (
+                            <div key={v.plate} onClick={() => setSelectedVehicle(v)} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 hover:border-blue-300 transition-all cursor-pointer group shadow-sm hover:shadow-md">
+                                <div className="flex justify-between items-center mb-3">
+                                    <div className="bg-white border-2 border-slate-200 rounded-md overflow-hidden min-w-[90px] text-center shadow-sm">
+                                        <div className="bg-[#003399] h-1.5 w-full"></div>
+                                        <h4 className={`text-lg font-black pt-1 px-1 ${theme.plate}`}>{v.plate}</h4>
+                                    </div>
+                                    <div className={`flex flex-col items-center px-2 py-1 rounded-lg leading-none border ${theme.trip}`}>
+                                        <span className="text-[9px] font-extrabold uppercase mb-0.5">Viagem:</span>
+                                        <span className="text-[11px] font-black">{v.trip}</span>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase text-center truncate ${theme.badge}`}>
+                                        {v.badge}
+                                    </div>
+                                    <div className="flex justify-between items-center px-1">
+                                        <span className="text-[9px] font-bold text-slate-400 uppercase">{v.dest}</span>
+                                        <div className="text-right whitespace-nowrap">
+                                            <span className="text-[9px] font-black text-slate-400 uppercase">Saída:</span>
+                                            <span className="text-[10px] font-black text-slate-700 ml-0.5">{v.time}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+                {filteredVehicles.length === 0 && (
+                    <div className="text-center py-12 text-slate-400 font-bold uppercase tracking-widest">Nenhum veículo encontrado.</div>
+                )}
+            </div>
+
+            {selectedVehicle && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-in fade-in" onClick={() => setSelectedVehicle(null)}>
+                    <div className="bg-white rounded-[2.5rem] p-8 max-w-md w-full mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-xl font-black tracking-tight mb-2 text-left text-slate-800 uppercase">Detalhes: {selectedVehicle.plate}</h3>
+                        <p className="text-slate-500 mb-6 font-medium text-sm leading-relaxed text-left">Veículo nesta etapa operacional.</p>
+                        <div className="space-y-3 max-h-[350px] overflow-y-auto custom-scrollbar pr-2 mb-8 text-left">
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Status Atual</p>
+                                <p className="text-slate-800 font-bold">{selectedVehicle.statusLabel}</p>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Motorista Responsável</p>
+                                <p className="text-slate-800 font-bold">Colaborador Exemplo</p>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Tempo na Etapa</p>
+                                <p className="text-blue-600 font-bold">14 minutos</p>
+                            </div>
+                        </div>
+                        <button onClick={() => setSelectedVehicle(null)} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl text-sm transition-all shadow-lg uppercase tracking-widest">Fechar</button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default function App() {
+    const [currentView, setCurrentView] = useState('visao-geral');
+    
+    const menuItems = [
+        { id: 'visao-geral', icon: LayoutDashboard, label: 'Visão Geral (Operacional)' },
+        { id: 'status-entregas', icon: Truck, label: 'Status de Entregas (Linha do Tempo)' },
+        { id: 'desempenho-frota', icon: AlertTriangle, label: 'Desempenho da Frota (Ocorrências)' },
+        { id: 'produtividade', icon: Activity, label: 'Monitoramento Online' },
+    ];
+
+    const PlaceholderView = ({ title, icon: Icon }) => (
+        <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400">
+            <Icon size={64} className="mb-4 opacity-50 text-blue-500" />
+            <h2 className="text-2xl font-bold text-slate-600 mb-2 uppercase tracking-tight">{title}</h2>
+            <p className="max-w-md text-center text-sm">Este painel será integrado nas próximas atualizações do sistema MCE.</p>
+        </div>
+    );
+
+    return (
+        <div className="flex h-screen bg-slate-100 font-sans overflow-hidden">
+            {/* Custom scrollbar css to ensure uniform look */}
+            <style>{`
+                .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+            `}</style>
+            
+            {/* Sidebar Lateral */}
+            <div className="w-72 bg-[#0B1120] text-white flex flex-col shadow-2xl z-20 flex-shrink-0">
+                <div className="p-6 pb-8 border-b border-white/5">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-xl shadow-lg">M</div>
+                        <div>
+                            <h1 className="font-extrabold text-lg leading-tight tracking-tight">WMS Dashboards</h1>
+                            <p className="text-xs text-blue-400 font-medium">Controle de Entregas</p>
+                        </div>
+                    </div>
+                </div>
+
+                <nav className="flex-1 py-6 px-4 space-y-1.5 overflow-y-auto">
+                    {menuItems.map(item => (
+                        <button
+                            key={item.id}
+                            onClick={() => setCurrentView(item.id)}
+                            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all duration-200 ${
+                                currentView === item.id 
+                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' 
+                                : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                            }`}
+                        >
+                            <item.icon size={18} className={currentView === item.id ? "text-white" : "opacity-70"} />
+                            <span className="truncate">{item.label}</span>
+                        </button>
+                    ))}
+                </nav>
+
+                <div className="p-4 border-t border-white/5">
+                    <div className="flex items-center gap-3 px-2 py-3 bg-white/5 rounded-xl">
+                        <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold border border-slate-600">PO</div>
+                        <div className="text-left overflow-hidden">
+                            <p className="text-xs font-bold text-white truncate">Product Owner</p>
+                            <p className="text-[10px] text-slate-400 truncate">Administrador MCE</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Conteúdo Principal */}
+            <div className="flex-1 flex flex-col overflow-hidden relative">
+                {/* Topbar Simplificada */}
+                <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 flex-shrink-0 z-10">
+                    <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">
+                        {menuItems.find(i => i.id === currentView)?.label.split(' (')[0]}
+                    </h2>
+                    
+                    <div className="flex items-center gap-6">
+                        <div className="relative hidden md:block">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <input type="text" placeholder="Pesquisar Veículo ou Loja..." className="pl-10 pr-4 py-2 bg-slate-100 border-none rounded-xl text-sm w-64 focus:ring-2 focus:ring-blue-500 outline-none font-medium" />
+                        </div>
+                        <button className="relative text-slate-400 hover:text-slate-700 transition-colors">
+                            <Bell size={20} />
+                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+                        </button>
+                    </div>
+                </header>
+
+                {/* View Container */}
+                <main className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
+                    <div className="max-w-[1600px] mx-auto">
+                        {currentView === 'visao-geral' && <VisaoGeral />}
+                        {currentView === 'status-entregas' && <StatusEntregas />}
+                        {currentView === 'desempenho-frota' && <PainelOcorrencias />}
+                        {currentView === 'produtividade' && <MonitoramentoOnline />}
+                    </div>
+                </main>
+            </div>
+        </div>
+    );
 }
